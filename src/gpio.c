@@ -55,8 +55,8 @@ void gpioInit()
 
     // Set the port's drive strength. In this MCU implementation, all GPIO cells
     // in a "Port" share the same drive strength setting. 
-	//GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
-	GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthWeakAlternateWeak); // Weak, 1mA
+	GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
+	//GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthWeakAlternateWeak); // Weak, 1mA
 	
 	// Set the 2 GPIOs mode of operation
 	GPIO_PinModeSet(LED_port, LED0_pin, gpioModePushPull, false);
