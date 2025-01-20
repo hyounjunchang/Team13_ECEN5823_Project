@@ -14,7 +14,7 @@
 
  *
  * Student edit: Add your name and email address here:
- * @student    Awesome Student, Awesome.Student@Colorado.edu
+ * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
  
  */
@@ -40,9 +40,11 @@
 // to determine the correct values for these.
 // If these links have gone bad, consult the reference manual and/or the datasheet for the MCU.
 // Change to correct port and pins:
-#define LED_port   (0) 
-#define LED0_pin   (0)
-#define LED1_pin   (0)
+
+// MCU for Blue Gekko EFR32BG13P632F512GM48-D: QFN48 chip, 2.4GHz
+#define LED_port   gpioPortF
+#define LED0_pin   4 // PF4
+#define LED1_pin   5 // PF5
 
 
 

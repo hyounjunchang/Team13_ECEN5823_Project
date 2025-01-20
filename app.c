@@ -36,7 +36,7 @@
  *
  *
  * Student edit: Add your name and email address here:
- * @student    Awesome Student, Awesome.Student@Colorado.edu
+ * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
  *
  *
@@ -160,7 +160,7 @@ SL_WEAK void app_init(void)
   // Don't call any Bluetooth API functions until after the boot event.
 
   // Student Edit: Add a call to gpioInit() here
-
+  gpioInit();
 
 
 } // app_init()

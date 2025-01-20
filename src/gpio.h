@@ -12,7 +12,7 @@
 
  *
  * Student edit: Add your name and email address here:
- * @student    Awesome Student, Awesome.Student@Colorado.edu
+ * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
  
  */
