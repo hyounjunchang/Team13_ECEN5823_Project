@@ -202,10 +202,12 @@ SL_WEAK void app_process_action(void)
   delayApprox(3500000);
 
   gpioLed0SetOn();
+  gpioLed1SetOn();
 
   delayApprox(3500000);
 
   gpioLed0SetOff();
+  gpioLed1SetOff();
 
 } // app_process_action()
 
