@@ -30,11 +30,12 @@
  * Editor: Feb 26, 2022, Dave Sluiter
  * Change: Added comment about use of .h files.
  *
- *
+ * Editor: Jan 26, 2025, Hyounjun Chang
+ * Change: Added energy modes definition
  *
  * Student edit: Add your name and email address here:
- * @student    Awesome Student, Awesome.Student@Colorado.edu
- *
+ * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
+ * @brief      header for applications
  *
  ******************************************************************************/
 
@@ -47,6 +48,13 @@
 
 #ifndef APP_H
 #define APP_H
+
+// Only define 1 of these to define the lowest energy mode
+// 0 = highest energy mode, 3 = lowest energy mode
+#define LOWEST_ENERGY_MODE 0
+//#define LOWEST_ENERGY_MODE 1
+//#define LOWEST_ENERGY_MODE 2
+//#define LOWEST_ENERGY_MODE 3
 
 /**************************************************************************//**
  * Application Init.
