@@ -12,3 +12,11 @@
  * Change: Initial .h file definition
  *
  */
+
+#ifndef OSCILLATORS_H
+#define OSCILLATORS_H
+
+// Enables Oscillators for Blue Gecko
+void initialize_oscillators();
+
+#endif

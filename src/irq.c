@@ -12,3 +12,5 @@
  * Change: Initial IRQ handlers definition
  *
  */
+
+#include "irq.h"

@@ -12,3 +12,8 @@
  * Change: Initial .h file definition
  *
  */
+
+#ifndef IRQ_H
+#define IRQ_H
+
+#endif

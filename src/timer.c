@@ -12,3 +12,5 @@
  * Change: Initial timer function setup
  *
  */
+
+#include "timer.h"
