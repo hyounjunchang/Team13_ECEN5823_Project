@@ -3,13 +3,13 @@
  * @brief     Functions for Interrupt Service Handlers (IRQ)
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Jan 26, 2025
+ * @date      Jan 30, 2025
  *
- * @resources
+ * @resources ECEN5823 isr_and_scheduler_issues.txt
  *
  *
- * Editor: Jan 26, 2025 Hyounjun Chang
- * Change: Initial IRQ handlers definition
+ * Editor: Jan 30, 2025 Hyounjun Chang
+ * Change: Added LETIMER0_IRQHandler to toggle LED0
  *
  */
 
@@ -37,6 +37,7 @@
 
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
+// referenced from ECEN5823 isr_and_scheduler_issues.txt
 void LETIMER0_IRQHandler(){
   // Log for debugging
   LOG_INFO("IRQ Triggered\n");

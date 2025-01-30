@@ -38,7 +38,8 @@
  * Student edit: Add your name and email address here:
  * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
- *
+ * Editor: Jan 30, 2025 Hyounjun Chang
+ * Change: updated app_init for A2 --> LED EM assignment
  *
  ******************************************************************************/
 #include "em_common.h"

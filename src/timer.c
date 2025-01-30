@@ -3,14 +3,14 @@
  * @brief     Timer functions (non-ISR) for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Jan 26, 2025
+ * @date      Jan 30, 2025
  *
  * @resources Silicon Labs peripheral example
  *            https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/adc/adc_single_letimer_prs_dma/src/main_s1.c
- *
+ *            ECEN5823 Lecture 5 example code
  *
- * Editor: Jan 26, 2025 Hyounjun Chang
- * Change: Initial timer function setup
+ * Editor: Jan 30, 2025 Hyounjun Chang
+ * Change: Initial LETIMER0 function setup
  *
  */
 #include "app.h"

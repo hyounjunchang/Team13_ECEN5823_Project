@@ -3,13 +3,13 @@
  * @brief     Configuration for oscillator/clock tree for Blue Gecko Board
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Jan 26, 2025
+ * @date      Jan 30, 2025
  *
  * @resources
  *
  *
- * Editor: Jan 26, 2025 Hyounjun Chang
- * Change: Initial oscillator/clock tree setup
+ * Editor: Jan 30, 2025 Hyounjun Chang
+ * Change: Initial oscillator/clock tree setup for LETIMER0
  *
  */
 
