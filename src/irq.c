@@ -23,6 +23,9 @@
 #include "em_letimer.h"
 #include <em_core.h>
 
+// for power mode
+#include "app.h"
+
 #include <stdbool.h>
 
 // Include logging for this file
@@ -45,22 +48,21 @@ void LETIMER0_IRQHandler(){
   // LED is on when COMP1 flag is set, turned off when underflow flag is set
 
   // step 1: determine pending interrupts in peripheral
-  uint32_t interrupt_flag = LETIMER_IntGet(LETIMER0); // from LETIMER0->IF;
-
-  bool turn_LED_on = interrupt_flag & LETIMER_IEN_COMP1;
-  bool turn_LED_off = interrupt_flag & LETIMER_IEN_UF;
+  uint32_t interrupt_flags = LETIMER_IntGet(LETIMER0); // from LETIMER0->IF;
 
   // step 2: clear pending interrupts in peripheral
-  LETIMER_IntClear(LETIMER0, 0xFFFFFFFF); // LETIMER0->IFC clear underflow flag
+  LETIMER_IntClear(LETIMER0, interrupt_flags);
 
   // step 3: your handling code
-  bool LED_on = GPIO_PinInGet(LED_port, LED0_pin);
+  bool turn_LED_on = interrupt_flags & LETIMER_IEN_COMP1;
+  bool turn_LED_off = interrupt_flags & LETIMER_IEN_UF;
+
   if (turn_LED_on){
       CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       gpioLed0SetOn();
       CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
   }
-  else if (turn_LED_off){
+  if (turn_LED_off){
       CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       gpioLed0SetOff();
       CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
@@ -69,5 +71,12 @@ void LETIMER0_IRQHandler(){
   // enable Interrupt again
   uint32_t letimer0_flags = LETIMER_IEN_UF|LETIMER_IEN_COMP1; // set interrupt flags again
   LETIMER_IntEnable(LETIMER0, letimer0_flags);
+
+  if (LOWEST_ENERGY_MODE == 1){
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  else if (LOWEST_ENERGY_MODE == 2){
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
 
 }

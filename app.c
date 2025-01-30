@@ -219,7 +219,12 @@ SL_WEAK void app_process_action(void)
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
 
-  // do nothing
+  if (LOWEST_ENERGY_MODE == 1){
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  else if (LOWEST_ENERGY_MODE == 2){
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
 
 } // app_process_action()
 
