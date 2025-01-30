@@ -62,6 +62,10 @@ void gpioInit()
 	GPIO_PinModeSet(LED_port, LED0_pin, gpioModePushPull, false);
 	GPIO_PinModeSet(LED_port, LED1_pin, gpioModePushPull, false);
 
+	// clear LED0 and LED1 for initialization
+	GPIO_PinOutClear(LED_port, LED0_pin);
+	GPIO_PinOutClear(LED_port, LED1_pin);
+
 
 } // gpioInit()
 

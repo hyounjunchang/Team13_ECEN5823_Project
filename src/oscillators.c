@@ -24,12 +24,18 @@ void initialize_oscillators(){
       /* Initialize LFXO with specific parameters */
       CMU_LFXOInit_TypeDef lfxoInit = CMU_LFXOINIT_DEFAULT;
       CMU_LFXOInit(&lfxoInit);
+      // set the prescaler for LETIMER0 to 4
+      CMU_ClockDivSet(cmuClock_LETIMER0, cmuClkDiv_4);
 
       CMU_OscillatorEnable(cmuOsc_LFXO, true, true); // enable LFXO, wait until ready
       CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFXO); // enable LFA clock, source=LFXO, LETIMER runs from LFA clock
+      CMU_ClockEnable(cmuClock_LETIMER0, true); // enable LETIMER0
   }
   else if (LOWEST_ENERGY_MODE == 3){
+      CMU_ClockDivSet(cmuClock_LETIMER0, cmuClkDiv_1);
+
       CMU_OscillatorEnable(cmuOsc_ULFRCO, true, true); // enable ULFCRO, wait until ready
       CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_ULFRCO);  // enable LFA clock, sourcｅ=ULFRCO, LETIMER runs from LFA clock
+      CMU_ClockEnable(cmuClock_LETIMER0, true); // enable LETIMER0
   }
 }

@@ -59,6 +59,8 @@
 #include "src/ble_device_type.h"
 #include "src/gpio.h"
 #include "src/lcd.h"
+#include "src/oscillators.h"
+#include "src/timer.h"
 
 
 // Students: Here is an example of how to correctly include logging functions in
@@ -68,7 +70,7 @@
 //           designed to be included at the top of each .c file that you want
 //           to call one of the LOG_***() functions from.
 
-// Include logging specifically for this .c file
+// Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
@@ -94,8 +96,12 @@
 // Students: We'll need to modify this for A2 onward so that compile time we
 //           control what the lowest EM (energy mode) the MCU sleeps to. So
 //           think "#if (expression)".
-#define APP_IS_OK_TO_SLEEP      (false)
-//#define APP_IS_OK_TO_SLEEP      (true)
+
+#if (LOWEST_ENERGY_MODE == 0)
+  #define APP_IS_OK_TO_SLEEP      (false)
+#else
+  #define APP_IS_OK_TO_SLEEP      (true)
+#endif
 
 
 // Return values for app_sleep_on_isr_exit():
@@ -149,6 +155,9 @@ sl_power_manager_on_isr_exit_t app_sleep_on_isr_exit(void)
 
 
 
+/*****************************************************************************
+ * Application Global Variables
+ *****************************************************************************/
 
 /**************************************************************************//**
  * Application Init.
@@ -159,9 +168,19 @@ SL_WEAK void app_init(void)
   // This is called once during start-up.
   // Don't call any Bluetooth API functions until after the boot event.
 
-  // Student Edit: Add a call to gpioInit() here
+  LOG_INFO("Initializing oscillators\n");
+  initialize_oscillators();
+  LOG_INFO("Initializing GPIO pins\n");
   gpioInit();
+  LOG_INFO("Initializing timers\n");
+  init_LETIMER0();
 
+
+  // from lecture 5
+  // This is the last thing you do prior to entering your while (1) loop
+  // see: ./gecko_sdk_3.2.3/platform/CMSIS/Include/core_cm4.h for Gecko SDK 3.2.3
+  NVIC_ClearPendingIRQ (LETIMER0_IRQn);
+  NVIC_EnableIRQ(LETIMER0_IRQn); // config NVIC to take IRQs from LETIMER0
 
 } // app_init()
 
@@ -174,6 +193,7 @@ SL_WEAK void app_init(void)
  * comment out this function. Wait loops are a bad idea in general.
  * We'll discuss how to do this a better way in the next assignment.
  *****************************************************************************/
+/*
 static void delayApprox(int delay)
 {
   volatile int i;
@@ -183,7 +203,7 @@ static void delayApprox(int delay)
   }
 
 } // delayApprox()
-
+*/
 
 
 
@@ -199,15 +219,7 @@ SL_WEAK void app_process_action(void)
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
 
-  delayApprox(3500000);
-
-  gpioLed0SetOn();
-  gpioLed1SetOn();
-
-  delayApprox(3500000);
-
-  gpioLed0SetOff();
-  gpioLed1SetOff();
+  // do nothing
 
 } // app_process_action()
 
