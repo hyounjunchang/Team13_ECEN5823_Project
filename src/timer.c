@@ -13,9 +13,26 @@
  * Change: Initial timer function setup
  *
  */
-
+#include "app.h"
 #include "timer.h"
 #include "em_letimer.h"
+
+#define LETIMER_ON_TIME_MS 175
+#define LETIMER_PERIOD_MS 2250
+
+#define LFXO_FREQ 32768
+#define ULFRCO_FREQ 1000
+
+#if (LOWEST_ENERGY_MODE == 3)
+  #define LETIMER0_PRESCALER 1 // CMU_LFAPRESC0 register, set by CMU_ClockDivSet()
+  #define LETIMER0_FREQ ULFRCO_FREQ/LETIMER0_PRESCALER
+#else
+  #define LETIMER0_PRESCALER 4 // CMU_LFAPRESC0 register, set by CMU_ClockDivSet()
+  #define LETIMER0_FREQ LFXO_FREQ/LETIMER0_PRESCALER
+#endif
+
+#define NUM_TIMER_PERIOD (LETIMER_PERIOD_MS * LETIMER0_FREQ) / 1000
+#define NUM_TIMER_LED_ON (LETIMER_ON_TIME_MS * LETIMER0_FREQ) / 1000
 
 void init_LETIMER0(){
   // example code from lecture 5
@@ -37,7 +54,6 @@ void init_LETIMER0(){
 
   // init the timer
   LETIMER_Init (LETIMER0, &letimerInitData);
-
 
   // Timer Value explanation:
   // COMP0 is set to num_clocks for period, COMP1 is set to num_clocks for LED on
