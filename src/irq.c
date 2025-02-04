@@ -28,6 +28,9 @@
 
 #include <stdbool.h>
 
+// add event to scheduler
+#include "scheduler.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -39,10 +42,12 @@
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
 // referenced from ECEN5823 isr_and_scheduler_issues.txt
 void LETIMER0_IRQHandler(){
-  // Log for debugging
-  LOG_INFO("IRQ Triggered\n");
-  CORE_DECLARE_IRQ_STATE;
-
+  if (LOWEST_ENERGY_MODE == 1){
+      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  else if (LOWEST_ENERGY_MODE == 2){
+      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
+  }
 
   // Timer IRQ explanation:
   // COMP0 is set to num_clocks for period, COMP1 is set to num_clocks for LED on
@@ -55,29 +60,14 @@ void LETIMER0_IRQHandler(){
   LETIMER_IntClear(LETIMER0, interrupt_flags);
 
   // step 3: your handling code
-  bool turn_LED_on = interrupt_flags & LETIMER_IEN_COMP1;
-  bool turn_LED_off = interrupt_flags & LETIMER_IEN_UF;
-
-  if (turn_LED_on){
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-      gpioLed0SetOn();
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+  if (interrupt_flags & LETIMER_IEN_COMP1){
+      set_scheduler_event(LETIMER0_COMP1);
   }
-  if (turn_LED_off){
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-      gpioLed0SetOff();
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+  if (interrupt_flags & LETIMER_IEN_UF){
+      set_scheduler_event(LETIMER0_UF);
   }
 
   // enable Interrupt again
-  uint32_t letimer0_flags = LETIMER_IEN_UF|LETIMER_IEN_COMP1; // set interrupt flags again
-  LETIMER_IntEnable(LETIMER0, letimer0_flags);
-
-  if (LOWEST_ENERGY_MODE == 1){
-      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  else if (LOWEST_ENERGY_MODE == 2){
-      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-  }
+  LETIMER_IntEnable(LETIMER0, interrupt_flags); // set interrupt flags again
 
 }

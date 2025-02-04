@@ -63,6 +63,7 @@
 #include "src/oscillators.h"
 #include "src/timer.h"
 
+#include "src/scheduler.h"
 
 // Students: Here is an example of how to correctly include logging functions in
 //           each .c file.
@@ -169,11 +170,8 @@ SL_WEAK void app_init(void)
   // This is called once during start-up.
   // Don't call any Bluetooth API functions until after the boot event.
 
-  LOG_INFO("Initializing oscillators\n");
   initialize_oscillators();
-  LOG_INFO("Initializing GPIO pins\n");
   gpioInit();
-  LOG_INFO("Initializing timers\n");
   init_LETIMER0();
 
 
@@ -219,6 +217,20 @@ SL_WEAK void app_process_action(void)
   // Notice: This function is not passed or has access to Bluetooth stack events.
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
+
+
+  scheduler_event curr_event = getNextEvent();
+
+  switch (curr_event){
+    case LETIMER0_UF:
+      gpioLed0SetOff();
+       break;
+    case LETIMER0_COMP1:
+      gpioLed0SetOn();
+      break;
+    default:
+      break;
+  }
 
   if (LOWEST_ENERGY_MODE == 1){
       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
