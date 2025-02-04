@@ -77,6 +77,14 @@
 #include "src/log.h"
 
 
+// define unit tests
+#include "test/timer_test.h"
+
+
+
+
+
+
 
 
 // *************************************************
@@ -174,7 +182,6 @@ SL_WEAK void app_init(void)
   gpioInit();
   init_LETIMER0();
 
-
   // from lecture 5
   // This is the last thing you do prior to entering your while (1) loop
   // see: ./gecko_sdk_3.2.3/platform/CMSIS/Include/core_cm4.h for Gecko SDK 3.2.3
@@ -218,16 +225,17 @@ SL_WEAK void app_process_action(void)
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
 
-
   scheduler_event curr_event = getNextEvent();
 
   while (curr_event != NO_EVENT){ // while loop for cpu sleep
     switch (curr_event){
       case LETIMER0_UF:
-        gpioLed0SetOn();
-        timerWaitUs(2000000);
-        gpioLed0SetOff();
-        timerWaitUs(500000);
+         TimerWaitUs_LED_blink(1000000);
+         TimerWaitUs_LED_blink(500000);
+         TimerWaitUs_LED_blink(100000);
+         TimerWaitUs_LED_blink(10000);
+         TimerWaitUs_LED_blink(10000);
+         TimerWaitUs_LED_blink(10000);
         break;
       default:
         break;
