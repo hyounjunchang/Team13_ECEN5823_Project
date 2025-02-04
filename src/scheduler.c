@@ -20,7 +20,6 @@
 // Define bit-flags
 #define NO_FLAG 0x0
 #define LETIMER0_UF_FLAG LETIMER_IEN_UF
-#define LETIMER0_COMP1_FLAG LETIMER_IEN_COMP1
 
 
 
@@ -28,7 +27,7 @@ typedef struct {
   uint32_t letimer0_flags;
 } event_flags;
 
-event_flags active_events = {NO_FLAG};
+static event_flags active_events = {NO_FLAG};
 
 // edited from Lecture 6 slides
 // returns a scheduler_event among one of the events available
@@ -45,12 +44,6 @@ scheduler_event getNextEvent(){
           active_events.letimer0_flags &= ~LETIMER0_UF_FLAG;
           CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
           return LETIMER0_UF;
-      }
-      if(active_events.letimer0_flags & LETIMER0_COMP1_FLAG){
-          CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-          active_events.letimer0_flags &= ~LETIMER0_COMP1_FLAG;
-          CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return LETIMER0_COMP1;
       }
 
   }
@@ -69,11 +62,6 @@ void set_scheduler_event(scheduler_event event){
     case LETIMER0_UF:
       CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       active_events.letimer0_flags |= LETIMER0_UF_FLAG;
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-      break;
-    case LETIMER0_COMP1:
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-      active_events.letimer0_flags |= LETIMER0_COMP1_FLAG;
       CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
       break;
     default:

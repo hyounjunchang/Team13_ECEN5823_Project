@@ -221,15 +221,18 @@ SL_WEAK void app_process_action(void)
 
   scheduler_event curr_event = getNextEvent();
 
-  switch (curr_event){
-    case LETIMER0_UF:
-      gpioLed0SetOff();
-       break;
-    case LETIMER0_COMP1:
-      gpioLed0SetOn();
-      break;
-    default:
-      break;
+  while (curr_event != NO_EVENT){ // while loop for cpu sleep
+    switch (curr_event){
+      case LETIMER0_UF:
+        gpioLed0SetOn();
+        timerWaitUs(2000000);
+        gpioLed0SetOff();
+        timerWaitUs(500000);
+        break;
+      default:
+        break;
+    }
+    curr_event = getNextEvent();
   }
 
   if (LOWEST_ENERGY_MODE == 1){

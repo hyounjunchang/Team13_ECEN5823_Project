@@ -12,10 +12,15 @@
  * Change: Initial .h file definition
  *
  */
-
 #ifndef GECKO_TIMERS
 #define GECKO_TIMERS
 
+#include <stdint.h> // for uint32_t declaration
+
 void init_LETIMER0();
+
+// waits for at least us_wait microseconds
+void timerWaitUs(uint32_t us_wait);
+
 
 #endif // GECKO_TIMERS

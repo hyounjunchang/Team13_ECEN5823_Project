@@ -31,17 +31,24 @@
 // add event to scheduler
 #include "scheduler.h"
 
+// add bool type
+#include <stdbool.h>
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-#define LED_port   gpioPortF
-#define LED0_pin   4 // PF4
+// static variable, only for this scope
+static bool events_enabled = true;
+
+extern bool timerWait_flag; // for timer.c timerWaitUs();
 
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
 // referenced from ECEN5823 isr_and_scheduler_issues.txt
 void LETIMER0_IRQHandler(){
+
+  // disable going to lower EM mode
   if (LOWEST_ENERGY_MODE == 1){
       sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
   }
@@ -60,14 +67,36 @@ void LETIMER0_IRQHandler(){
   LETIMER_IntClear(LETIMER0, interrupt_flags);
 
   // step 3: your handling code
-  if (interrupt_flags & LETIMER_IEN_COMP1){
-      set_scheduler_event(LETIMER0_COMP1);
-  }
   if (interrupt_flags & LETIMER_IEN_UF){
-      set_scheduler_event(LETIMER0_UF);
+
+      // only add event if scheduler enabled
+      if (events_enabled){
+          set_scheduler_event(LETIMER0_UF);
+      }
+      if (!timerWait_flag){
+          timerWait_flag = true;
+      }
   }
 
   // enable Interrupt again
-  LETIMER_IntEnable(LETIMER0, interrupt_flags); // set interrupt flags again
+  LETIMER_IntEnable(LETIMER0, interrupt_flags); // set interrupt flags
 
+  // disable going to lower EM mode
+  if (LOWEST_ENERGY_MODE == 1){
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  else if (LOWEST_ENERGY_MODE == 2){
+      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
+
+}
+
+// enables scheduler event
+void enable_events(){
+  events_enabled = true;
+}
+
+// disables scheduler event
+void disable_events(){
+  events_enabled = false;
 }

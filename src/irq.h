@@ -16,6 +16,10 @@
 #ifndef IRQ_H
 #define IRQ_H
 
+#include <stdbool.h>
+
 void LETIMER0_IRQHandler();
+void enable_events();
+void disable_events();
 
 #endif
