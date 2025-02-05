@@ -62,8 +62,9 @@
 #include "src/lcd.h"
 #include "src/oscillators.h"
 #include "src/timer.h"
-
 #include "src/scheduler.h"
+#include "src/i2c.h"
+
 
 // Students: Here is an example of how to correctly include logging functions in
 //           each .c file.
@@ -230,8 +231,7 @@ SL_WEAK void app_process_action(void)
   while (curr_event != NO_EVENT){ // while loop for cpu sleep
     switch (curr_event){
       case Si7021_LETIMER0_UF:
-          // read temperature sensor
-          LOG_INFO("READING_SENSOR");
+          SI7021_get_temperature();
         break;
       default:
         break;

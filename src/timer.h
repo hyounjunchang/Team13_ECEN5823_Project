@@ -16,11 +16,16 @@
 #define GECKO_TIMERS
 
 #include <stdint.h> // for uint32_t declaration
+#include <stdbool.h>
 
 void init_LETIMER0();
 
 // waits for at least us_wait microseconds
 void timerWaitUs(uint32_t us_wait);
 
+// flags for timerWait
+bool get_timerWait_flag();
+void set_timerWait_flag();
+void clear_timerWait_flag();
 
 #endif // GECKO_TIMERS

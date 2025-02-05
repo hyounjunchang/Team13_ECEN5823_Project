@@ -41,8 +41,6 @@
 // static variable, only for this scope
 static bool events_enabled = true;
 
-extern bool timerWait_flag; // for timer.c timerWaitUs();
-
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
 // referenced from ECEN5823 isr_and_scheduler_issues.txt
@@ -73,8 +71,10 @@ void LETIMER0_IRQHandler(){
       if (events_enabled){
           set_scheduler_event(Si7021_LETIMER0_UF);
       }
+
+      bool timerWait_flag = get_timerWait_flag();
       if (!timerWait_flag){
-          timerWait_flag = true;
+          set_timerWait_flag();
       }
   }
 
@@ -88,12 +88,6 @@ void LETIMER0_IRQHandler(){
   else if (LOWEST_ENERGY_MODE == 2){
       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
   }
-
-}
-
-// I2C0 Interrupt Handler
-void I2C0_IRQHandler(void)
-{
 
 }
 

@@ -17,6 +17,7 @@
 #include "src/gpio.h"
 
 void TimerWaitUs_LED_blink(uint32_t us){
+  gpioInit_LED();
   gpioLed0SetOn();
   timerWaitUs(us);
   gpioLed0SetOff();

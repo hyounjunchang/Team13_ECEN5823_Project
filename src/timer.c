@@ -42,7 +42,7 @@
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-bool timerWait_flag = false;
+static bool timerWait_flag = false;
 
 void init_LETIMER0(){
   // disable LETIMER0 in case its already initialized
@@ -150,4 +150,16 @@ void timerWaitUs(uint32_t us_wait){
   }
 
   init_LETIMER0();
+}
+
+bool get_timerWait_flag(){
+  return timerWait_flag;
+}
+
+void set_timerWait_flag(){
+  timerWait_flag = true;
+}
+
+void clear_timerWait_flag(){
+  timerWait_flag = false;
 }

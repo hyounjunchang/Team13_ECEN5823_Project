@@ -34,6 +34,7 @@
 #include <string.h>
 
 #include "gpio.h"
+#include "timer.h"
 
 
 // Student Edit: Define these, 0's are placeholder values.
@@ -49,21 +50,19 @@
 #define LED0_pin   4 // PF4
 #define LED1_pin   5 // PF5
 
-// For Si7021 Temperature Sensor
-#define Si7021_port gpioPortC
-#define Si7021_SCL_pin 10 // I2C0_SCL_14
-#define Si7021_SDA_pin 11 // I2C0_SDA_16
-#define Si7021_ENABLE_pin 15
+// For SI7021 Temperature Sensor
+#define SI7021_I2C_PORT gpioPortC
+#define SI7021_SCL_PIN 10 // I2C0_SCL_14
+#define SI7021_SDA_PIN 11 // I2C0_SDA_16
+
+#define SI7021_ENABLE_PORT gpioPortD
+#define SI7021_ENABLE_PIN 15
 
 
-// Set GPIO drive strengths and modes of operation
+// called during boot_up in app.c
 void gpioInit()
 {
-	// Initialize
-  gpioInit_LED();
-  gpioInit_Si7021();
-
-
+  gpioInit_SI7021();
 } // gpioInit()
 
 void gpioInit_LED(){
@@ -82,14 +81,49 @@ void gpioInit_LED(){
 
 }
 
-void gpioInit_Si7021(){
-  GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthWeakAlternateWeak); // Weak, 1mA
-  // Set the 2 GPIOs mode of operation
-  GPIO_PinModeSet(Si7021_port, Si7021_SCL_pin, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1
-  GPIO_PinModeSet(Si7021_port, Si7021_SDA_pin, gpioModeWiredAndPullUp, 1);
-  GPIO_PinModeSet(Si7021_port, Si7021_ENABLE_pin, gpioModePushPull, false); // push-pull, initialize with 0
+// Initializes SI7021, must be called on initialization to power on the port
+void gpioInit_SI7021(){
+  // Max current 4mA for I2C/Power-Up for SI7021
+  // Per I2C spec, 3mA for 100kHz/400kHz
+  GPIO_DriveStrengthSet(SI7021_I2C_PORT, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
+  GPIO_DriveStrengthSet(SI7021_ENABLE_PORT, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
+
+  // Set GPIOs mode of operation
+  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1
+  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SDA_PIN, gpioModeWiredAndPullUp, 1);
+  GPIO_PinModeSet(SI7021_ENABLE_PORT, SI7021_ENABLE_PIN, gpioModePushPull, 0); // push-pull, initialize with 0 (off)
 }
 
+// Referenced from Lecture 6
+void gpioPowerOn_SI7021(){
+  // Basic setup steps for GPIO control include the following:
+  // 1- Setup the GPIO for Push-pull configuration and enable the GPIO pin to enable power to the device, i.e. set to 1 (SENSOR_ENABLE)
+  GPIO_PinModeSet(SI7021_ENABLE_PORT, SI7021_ENABLE_PIN, gpioModePushPull, 1); // push-pull
+  GPIO_PinOutSet(SI7021_ENABLE_PORT, SI7021_ENABLE_PIN);
+
+  // 2- Wait for external device to complete its Power On Reset (POR) sequence
+  // 80ms max power-up time
+  timerWaitUs(80000);
+
+  // 3- Setup/enable GPIOs used for communication (I2C GPIOs: SCLK,SDA) with the device
+  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1
+  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SDA_PIN, gpioModeWiredAndPullUp, 1);
+
+  // 4- Initialize the device, if required, including peripheral interrupt requests
+  // 5- If using interrupts, enable NVIC interrupts for the device
+}
+
+// Referenced from Lecture 6
+void gpioPowerOff_SI7021(){
+  // 5- If using interrupts, disable NVIC interrupts for the device
+
+  // 3- Disable GPIOs used for communication (I2C GPIOs: SCLK,SDA) with the device
+  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeDisabled, 1);
+  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SDA_PIN, gpioModeDisabled, 1);
+
+  // 1- Set GPIO pin to power-off the device, i.e. set to 0 (SENSOR_ENABLE), don’t disable the GPIO!
+  GPIO_PinOutClear(SI7021_ENABLE_PORT, SI7021_ENABLE_PIN);
+}
 
 void gpioLed0SetOn()
 {

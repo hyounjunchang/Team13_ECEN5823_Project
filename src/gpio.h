@@ -29,23 +29,21 @@
 #ifndef SRC_GPIO_H_
 #define SRC_GPIO_H_
 
-
-
-
 // Function prototypes
 void gpioInit();
 
+// GPIO initialization
 void gpioInit_LED();
-void gpioInit_Si7021();
+void gpioInit_SI7021();
 
+// SI7021
+void gpioPowerOn_SI7021();
+void gpioPowerOff_SI7021();
 
+// LED
 void gpioLed0SetOn();
 void gpioLed0SetOff();
 void gpioLed1SetOn();
 void gpioLed1SetOff();
-
-
-
-
 
 #endif /* SRC_GPIO_H_ */
