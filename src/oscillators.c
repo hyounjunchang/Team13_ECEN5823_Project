@@ -38,4 +38,11 @@ void initialize_oscillators(){
       CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_ULFRCO);  // enable LFA clock, sourcｅ=ULFRCO, LETIMER runs from LFA clock
       CMU_ClockEnable(cmuClock_LETIMER0, true); // enable LETIMER0
   }
+
+  // HFPERCLK only available in EM0
+
+  // Enable Clocks for I2C
+  CMU_ClockEnable(cmuClock_I2C0, true);
+
+
 }

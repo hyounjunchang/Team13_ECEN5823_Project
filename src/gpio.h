@@ -34,6 +34,11 @@
 
 // Function prototypes
 void gpioInit();
+
+void gpioInit_LED();
+void gpioInit_Si7021();
+
+
 void gpioLed0SetOn();
 void gpioLed0SetOff();
 void gpioLed1SetOn();

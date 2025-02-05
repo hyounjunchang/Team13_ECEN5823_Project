@@ -5,7 +5,7 @@
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
  * @date      Jan 30, 2025
  *
- * @resources ECEN5823 isr_and_scheduler_issues.txt
+ * @resources
  *
  *
  * Editor: Jan 30, 2025 Hyounjun Chang
@@ -71,7 +71,7 @@ void LETIMER0_IRQHandler(){
 
       // only add event if scheduler enabled
       if (events_enabled){
-          set_scheduler_event(LETIMER0_UF);
+          set_scheduler_event(Si7021_LETIMER0_UF);
       }
       if (!timerWait_flag){
           timerWait_flag = true;
@@ -88,6 +88,12 @@ void LETIMER0_IRQHandler(){
   else if (LOWEST_ENERGY_MODE == 2){
       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
   }
+
+}
+
+// I2C0 Interrupt Handler
+void I2C0_IRQHandler(void)
+{
 
 }
 

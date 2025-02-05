@@ -43,7 +43,7 @@ scheduler_event getNextEvent(){
           CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
           active_events.letimer0_flags &= ~LETIMER0_UF_FLAG;
           CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return LETIMER0_UF;
+          return Si7021_LETIMER0_UF;
       }
 
   }
@@ -59,7 +59,7 @@ void set_scheduler_event(scheduler_event event){
   switch (event){
     case NO_EVENT:
       break;
-    case LETIMER0_UF:
+    case Si7021_LETIMER0_UF:
       CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       active_events.letimer0_flags |= LETIMER0_UF_FLAG;
       CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts

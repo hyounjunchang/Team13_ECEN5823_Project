@@ -53,8 +53,8 @@
 // 0 = highest energy mode, 3 = lowest energy mode
 //#define LOWEST_ENERGY_MODE 0
 //#define LOWEST_ENERGY_MODE 1
-//#define LOWEST_ENERGY_MODE 2
-#define LOWEST_ENERGY_MODE 3
+#define LOWEST_ENERGY_MODE 2
+//#define LOWEST_ENERGY_MODE 3
 
 /**************************************************************************//**
  * Application Init.

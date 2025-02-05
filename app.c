@@ -229,13 +229,9 @@ SL_WEAK void app_process_action(void)
 
   while (curr_event != NO_EVENT){ // while loop for cpu sleep
     switch (curr_event){
-      case LETIMER0_UF:
-         TimerWaitUs_LED_blink(1000000);
-         TimerWaitUs_LED_blink(500000);
-         TimerWaitUs_LED_blink(100000);
-         TimerWaitUs_LED_blink(10000);
-         TimerWaitUs_LED_blink(10000);
-         TimerWaitUs_LED_blink(10000);
+      case Si7021_LETIMER0_UF:
+          // read temperature sensor
+          LOG_INFO("READING_SENSOR");
         break;
       default:
         break;

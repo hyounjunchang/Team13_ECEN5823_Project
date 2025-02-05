@@ -12,6 +12,8 @@
    Dave Sluiter: Cleaned up gpioInit() to make it less confusing for students regarding
                  drive strength setting. 
 
+ * @resources
+ *
  *
  * Student edit: Add your name and email address here:
  * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
@@ -47,28 +49,46 @@
 #define LED0_pin   4 // PF4
 #define LED1_pin   5 // PF5
 
+// For Si7021 Temperature Sensor
+#define Si7021_port gpioPortC
+#define Si7021_SCL_pin 10 // I2C0_SCL_14
+#define Si7021_SDA_pin 11 // I2C0_SDA_16
+#define Si7021_ENABLE_pin 15
 
 
 // Set GPIO drive strengths and modes of operation
 void gpioInit()
 {
-    // Student Edit:
-
-    // Set the port's drive strength. In this MCU implementation, all GPIO cells
-    // in a "Port" share the same drive strength setting. 
-	//GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
-	GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthWeakAlternateWeak); // Weak, 1mA
-	
-	// Set the 2 GPIOs mode of operation
-	GPIO_PinModeSet(LED_port, LED0_pin, gpioModePushPull, false);
-	GPIO_PinModeSet(LED_port, LED1_pin, gpioModePushPull, false);
-
-	// clear LED0 and LED1 for initialization
-	GPIO_PinOutClear(LED_port, LED0_pin);
-	GPIO_PinOutClear(LED_port, LED1_pin);
+	// Initialize
+  gpioInit_LED();
+  gpioInit_Si7021();
 
 
 } // gpioInit()
+
+void gpioInit_LED(){
+  // Set the port's drive strength. In this MCU implementation, all GPIO cells
+  // in a "Port" share the same drive strength setting.
+  //GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
+  GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthWeakAlternateWeak); // Weak, 1mA
+
+  // Set the 2 GPIOs mode of operation
+  GPIO_PinModeSet(LED_port, LED0_pin, gpioModePushPull, false);
+  GPIO_PinModeSet(LED_port, LED1_pin, gpioModePushPull, false);
+
+  // clear LED0 and LED1 for initialization
+  GPIO_PinOutClear(LED_port, LED0_pin);
+  GPIO_PinOutClear(LED_port, LED1_pin);
+
+}
+
+void gpioInit_Si7021(){
+  GPIO_DriveStrengthSet(LED_port, gpioDriveStrengthWeakAlternateWeak); // Weak, 1mA
+  // Set the 2 GPIOs mode of operation
+  GPIO_PinModeSet(Si7021_port, Si7021_SCL_pin, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1
+  GPIO_PinModeSet(Si7021_port, Si7021_SDA_pin, gpioModeWiredAndPullUp, 1);
+  GPIO_PinModeSet(Si7021_port, Si7021_ENABLE_pin, gpioModePushPull, false); // push-pull, initialize with 0
+}
 
 
 void gpioLed0SetOn()
