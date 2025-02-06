@@ -62,7 +62,7 @@ void initialize_I2C(){
 }
 
 // Used from Lecture 6 slides
-float SI7021_get_temperature(){
+int SI7021_get_temperature(){
   gpioPowerOn_SI7021();
   // wait for power-up time (max 80ms)
   timerWaitUs(80000);
@@ -73,7 +73,8 @@ float SI7021_get_temperature(){
 
   uint16_t sensor_value = SI7021_read_measured_temp();
   float sensor_temp = SI7021_convert_temp(sensor_value);
-  LOG_INFO("Read temperature %f\r\n", sensor_temp);
+  int rounded_sensor_temp = (int)sensor_temp;
+  LOG_INFO("Read temperature %iC\r\n", rounded_sensor_temp);
 
   gpioPowerOff_SI7021();
   return sensor_temp;
