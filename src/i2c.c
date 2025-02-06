@@ -73,7 +73,7 @@ float SI7021_get_temperature(){
 
   uint16_t sensor_value = SI7021_read_measured_temp();
   float sensor_temp = SI7021_convert_temp(sensor_value);
-  LOG_INFO("Read temperature %f", sensor_temp);
+  LOG_INFO("Read temperature %f\r\n", sensor_temp);
 
   gpioPowerOff_SI7021();
   return sensor_temp;
@@ -81,7 +81,7 @@ float SI7021_get_temperature(){
 
 // returns temperature in Celsius
 float SI7021_convert_temp(uint16_t temp_code){
-  return (175.72 * (temp_code >> 2)) / 65536 - 46.85;
+  return (175.72 * temp_code) / 65536 - 46.85;
 }
 
 // Used from Lecture 6 slides
@@ -99,7 +99,7 @@ void SI7021_start_measure_temp(){
   transferSequence.buf[0].len = sizeof(cmd_data);
   transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
   if (transferStatus != i2cTransferDone) {
-      LOG_ERROR("I2C transfer Failed");
+      LOG_ERROR("I2C transfer Failed\r\n");
   }
 
 }
@@ -108,16 +108,24 @@ uint16_t SI7021_read_measured_temp(){
   // send Read command
   I2C_TransferReturn_TypeDef transferStatus; // make this global for IRQs in A4
   I2C_TransferSeq_TypeDef transferSequence; // this one can be local
-  uint16_t read_data; // make this global for IRQs in A4
+
+  // 2-byte data received
+  uint8_t read_data[2]; // make this global for IRQs in A4
 
   transferSequence.addr = SI7021_ADDR << 1; // shift device address left
   transferSequence.flags = I2C_FLAG_READ;
-  transferSequence.buf[0].data = &read_data; // pointer to data to write
+  transferSequence.buf[0].data = read_data; // pointer to data to write
   transferSequence.buf[0].len = sizeof(read_data);
   transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
   if (transferStatus != i2cTransferDone) {
-      LOG_ERROR("I2C transfer Failed");
+      LOG_ERROR("I2C transfer Failed\r\n");
   }
 
-  return read_data;
+  // SI7021 sends 2-byte data, MSB then LSB (big-endian)
+  // uint16_t is little-endian, so you can't directly store to uint16_t
+  // add values from 0
+  uint16_t sensor_value = read_data[1];
+  sensor_value += (uint16_t)read_data[0] << 8;
+
+  return sensor_value;
 }

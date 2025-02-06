@@ -22,6 +22,7 @@
 // for timer/register control
 #include "em_letimer.h"
 #include <em_core.h>
+#include "timer.h"
 
 // for power mode
 #include "app.h"
