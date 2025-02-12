@@ -8,9 +8,6 @@
  * @resources
  *
  *
- * Editor: Jan 30, 2025 Hyounjun Chang
- * Change: Added LETIMER0_IRQHandler to toggle LED0
- *
  */
 
 #include "irq.h"

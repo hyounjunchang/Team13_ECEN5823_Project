@@ -8,8 +8,6 @@
  * @resources Lecture 6 Slides
  *
  *
- * Editor: Feb 4, 2025 Hyounjun Chang
- * Change: Initial I2CSPM used
  *
  */
 

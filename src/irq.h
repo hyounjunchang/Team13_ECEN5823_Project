@@ -8,8 +8,6 @@
  * @resources
  *
  *
- * Editor: Jan 30, 2025 Hyounjun Chang
- * Change: Initial .h file definition
  *
  */
 

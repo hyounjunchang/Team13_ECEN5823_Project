@@ -9,8 +9,6 @@
  *            https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/adc/adc_single_letimer_prs_dma/src/main_s1.c
  *            ECEN5823 Lecture 5 example code
  *
- * Editor: Jan 30, 2025 Hyounjun Chang
- * Change: Initial LETIMER0 function setup
  *
  */
 #include "app.h"

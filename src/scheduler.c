@@ -7,8 +7,6 @@
  *
  * @resources ECEN5823 Lecture 6 example code
  *
- * Editor: Feb 3, 2025 Hyounjun Chang
- * Change: Initial scheduler functions setup
  *
  */
 #include "scheduler.h"
