@@ -33,8 +33,10 @@
   #define LETIMER0_FREQ LFXO_FREQ/LETIMER0_PRESCALER
 #endif
 
-#define NUM_TIMER_PERIOD (LETIMER_PERIOD_MS * LETIMER0_FREQ) / 1000
+#define LETIMER0_CMP_ONE_PERIOD (LETIMER_PERIOD_MS * LETIMER0_FREQ) / 1000
 
+//
+#define LETIMER_CNT_TO_MS(x) (x * 1000) / LETIMER0_FREQ
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -42,7 +44,13 @@
 
 static bool timerWait_flag = false;
 
+// last requested letimer interrupt duration in ms
+static uint32_t last_letimer_duration_ms = 0;
+
 void init_LETIMER0(){
+  // Update last_letimer_duration_ms
+  last_letimer_duration_ms = LETIMER_PERIOD_MS;
+
   // disable LETIMER0 in case its already initialized
   LETIMER_Enable(LETIMER0, false);
 
@@ -69,10 +77,12 @@ void init_LETIMER0(){
   // Timer Value explanation:
 
   // calculate and load COMP0 (top)
-  LETIMER_CompareSet(LETIMER0, 0, NUM_TIMER_PERIOD); //value has to be within 16-bits
+  LETIMER_CompareSet(LETIMER0, 0, LETIMER0_CMP_ONE_PERIOD); //value has to be within 16-bits
 
   // Clear all IRQ flags in the LETIMER0 IF status register
   LETIMER_IntClear (LETIMER0, 0xFFFFFFFF); // punch them all down
+  // Disable all interrupts before re-enabling... (since we might have used different interrupts)
+  LETIMER_IntDisable(LETIMER0, 0xFFFFFFFF);
 
   // Set UF flag in LETIMER0_IEN, so that the timer will generate IRQs to the NVIC.
   temp = LETIMER_IEN_UF;
@@ -86,7 +96,14 @@ void init_LETIMER0(){
 // waits for at least us_wait microseconds
 // if LETIMER0 frequency is low, wait will closer to ms range
 // LETIMER0 must be initialized
-void timerWaitUs(uint32_t us_wait){
+void timerWaitUs_polled(uint32_t us_wait){
+  CORE_DECLARE_IRQ_STATE;
+
+  // Add time spent until getting to this function to update letimerMilliseconds()
+  CORE_ENTER_CRITICAL();
+  uint32_t cnt_change = LETIMER0_CMP_ONE_PERIOD - LETIMER_CounterGet(LETIMER0);
+  add_letimerMilliseconds(LETIMER_CNT_TO_MS(cnt_change));
+  CORE_EXIT_CRITICAL();
 
   // disable going to lower EM mode
   if (LOWEST_ENERGY_MODE == 1){
@@ -113,9 +130,11 @@ void timerWaitUs(uint32_t us_wait){
       // set CNT variable
       if (num_timer_cycles <= 0xFFFF){
           LETIMER0->CNT = num_timer_cycles;
+          last_letimer_duration_ms = LETIMER_CNT_TO_MS(num_timer_cycles);
       }
       else{
           LETIMER0->CNT = 0xFFFF;
+          last_letimer_duration_ms = LETIMER_CNT_TO_MS(0xFFFF);
       }
 
       LETIMER_Enable(LETIMER0, true);
@@ -160,4 +179,8 @@ void set_timerWait_flag(){
 
 void clear_timerWait_flag(){
   timerWait_flag = false;
+}
+
+uint32_t get_last_LETIMER_duration_ms(){
+  return last_letimer_duration_ms;
 }

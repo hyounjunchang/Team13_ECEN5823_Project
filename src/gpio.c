@@ -103,7 +103,7 @@ void gpioPowerOn_SI7021(){
 
   // 2- Wait for external device to complete its Power On Reset (POR) sequence
   // 80ms max power-up time
-  timerWaitUs(80000);
+  timerWaitUs_polled(80000);
 
   // 3- Setup/enable GPIOs used for communication (I2C GPIOs: SCLK,SDA) with the device
   GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1

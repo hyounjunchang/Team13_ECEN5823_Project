@@ -19,7 +19,7 @@
 void TimerWaitUs_LED_blink(uint32_t us){
   gpioInit_LED();
   gpioLed0SetOn();
-  timerWaitUs(us);
+  timerWaitUs_polled(us);
   gpioLed0SetOff();
-  timerWaitUs(us);
+  timerWaitUs_polled(us);
 }

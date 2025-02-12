@@ -63,11 +63,11 @@ void initialize_I2C(){
 int SI7021_get_temperature(){
   gpioPowerOn_SI7021();
   // wait for power-up time (max 80ms)
-  timerWaitUs(80000);
+  timerWaitUs_polled(80000);
 
   SI7021_start_measure_temp();
   // wait for temperature reading, max 10.8ms for 14-bit
-  timerWaitUs(11000); // wait at least 11ms
+  timerWaitUs_polled(11000); // wait at least 11ms
 
   uint16_t sensor_value = SI7021_read_measured_temp();
   float sensor_temp = SI7021_convert_temp(sensor_value);

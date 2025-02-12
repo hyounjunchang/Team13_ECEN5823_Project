@@ -38,11 +38,13 @@
 
 // static variable, only for this scope
 static bool events_enabled = true;
+static uint32_t letimer_ms = 0;
 
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
 // referenced from ECEN5823 isr_and_scheduler_issues.txt
 void LETIMER0_IRQHandler(){
+  CORE_DECLARE_IRQ_STATE;
 
   // disable going to lower EM mode
   if (LOWEST_ENERGY_MODE == 1){
@@ -70,10 +72,16 @@ void LETIMER0_IRQHandler(){
           set_scheduler_event(Si7021_LETIMER0_UF);
       }
 
+      // used by timerWaitUs_polled() to "spin" through while loop until IRQ
       bool timerWait_flag = get_timerWait_flag();
       if (!timerWait_flag){
           set_timerWait_flag();
       }
+
+      // update ms_time on LETIMER_UF (underflow) interrupt
+      CORE_ENTER_CRITICAL();
+      letimer_ms += get_last_LETIMER_duration_ms();
+      CORE_EXIT_CRITICAL();
   }
 
   // enable Interrupt again
@@ -97,4 +105,12 @@ void enable_events(){
 // disables scheduler event
 void disable_events(){
   events_enabled = false;
+}
+
+void add_letimerMilliseconds(uint32_t ms){
+  letimer_ms += ms;
+}
+
+uint32_t letimerMilliseconds(){
+  return letimer_ms;
 }

@@ -15,9 +15,13 @@
 #define IRQ_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 void LETIMER0_IRQHandler();
 void enable_events();
 void disable_events();
+
+void add_letimerMilliseconds(uint32_t ms);
+uint32_t letimerMilliseconds();
 
 #endif
