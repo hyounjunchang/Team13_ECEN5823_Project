@@ -18,8 +18,8 @@
 #include <stdint.h>
 
 void LETIMER0_IRQHandler();
-void enable_events();
-void disable_events();
+void enable_SI7021_event();
+void disable_SI7021_event();
 
 void add_letimerMilliseconds(uint32_t ms);
 uint32_t letimerMilliseconds();

@@ -18,7 +18,8 @@
 // there are not the bit-fields
 typedef enum{
     NO_EVENT = 0,
-    Si7021_LETIMER0_UF
+    SI7021_LETIMER0_UF,
+    EVENT_LETIMER0_COMP1
 } scheduler_event;
 
 

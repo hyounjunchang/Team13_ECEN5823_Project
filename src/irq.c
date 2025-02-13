@@ -37,7 +37,7 @@
 #include "src/log.h"
 
 // static variable, only for this scope
-static bool events_enabled = true;
+static bool SI7021_enabled = true;
 static uint32_t letimer_ms = 0;
 
 // check startup_efr32bg13p.c for list of IRQ Handlers
@@ -68,14 +68,11 @@ void LETIMER0_IRQHandler(){
   if (interrupt_flags & LETIMER_IEN_UF){
 
       // only add event if scheduler enabled
-      if (events_enabled){
-          set_scheduler_event(Si7021_LETIMER0_UF);
+      if (SI7021_enabled){
+          set_scheduler_event(SI7021_LETIMER0_UF);
       }
-
-      // used by timerWaitUs_polled() to "spin" through while loop until IRQ
-      bool timerWait_flag = get_timerWait_flag();
-      if (!timerWait_flag){
-          set_timerWait_flag();
+      else{
+          set_timerwait_done(); // used by timerWaitUs_polled() "spins" until this is set
       }
 
       // update ms_time on LETIMER_UF (underflow) interrupt
@@ -97,14 +94,14 @@ void LETIMER0_IRQHandler(){
 
 }
 
-// enables scheduler event
-void enable_events(){
-  events_enabled = true;
+// enables SI7021 event on LETIMER0_UF
+void enable_SI7021_event(){
+  SI7021_enabled = true;
 }
 
-// disables scheduler event
-void disable_events(){
-  events_enabled = false;
+// disables SI7021 event on LETIMER0_UF
+void disable_SI7021_event(){
+  SI7021_enabled = false;
 }
 
 void add_letimerMilliseconds(uint32_t ms){

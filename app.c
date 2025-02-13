@@ -230,7 +230,7 @@ SL_WEAK void app_process_action(void)
 
   while (curr_event != NO_EVENT){ // while loop for cpu sleep
     switch (curr_event){
-      case Si7021_LETIMER0_UF:
+      case SI7021_LETIMER0_UF:
           SI7021_get_temperature();
         break;
       default:

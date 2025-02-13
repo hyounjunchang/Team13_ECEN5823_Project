@@ -42,7 +42,7 @@
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-static bool timerWait_flag = false;
+static bool timerwait_done = false;
 
 // last requested letimer interrupt duration in ms
 static uint32_t last_letimer_duration_ms = 0;
@@ -93,9 +93,8 @@ void init_LETIMER0(){
 }
 
 
-// waits for at least us_wait microseconds
-// if LETIMER0 frequency is low, wait will closer to ms range
-// LETIMER0 must be initialized
+// waits for at least us_wait microseconds, blocking
+// modifies LETIMER0_CNT register
 void timerWaitUs_polled(uint32_t us_wait){
   CORE_DECLARE_IRQ_STATE;
 
@@ -113,12 +112,13 @@ void timerWaitUs_polled(uint32_t us_wait){
       sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
   }
 
-  // disable IRQ from adding events
-  disable_events();
+  // disable SI7021_UF event (since we are using UF to wait))
+  disable_SI7021_event();
   // 1sec = 1000000 us
-  uint64_t num_timer_cycles = ((uint64_t)us_wait * (uint64_t)LETIMER0_FREQ / (uint64_t)1000000) + 1; // 64-bit due to truncation
-  // update timer_wait
-  timerWait_flag = false;
+  uint64_t num_timer_cycles = ((uint64_t)us_wait * (uint64_t)LETIMER0_FREQ /
+                               (uint64_t)1000000) + 1; // 64-bit due to truncation
+  // reset timer wait flag
+  clear_timerwait_done();
 
   while (num_timer_cycles != 0){
       LETIMER_Enable(LETIMER0, false);
@@ -140,7 +140,7 @@ void timerWaitUs_polled(uint32_t us_wait){
       LETIMER_Enable(LETIMER0, true);
 
       // wait until ISR triggered
-      while (!timerWait_flag){
+      while (!timerwait_done){
          //LOG_INFO("looping until ISR\n");
       }
 
@@ -152,11 +152,14 @@ void timerWaitUs_polled(uint32_t us_wait){
       }
 
       // reset timer wait flag
-      timerWait_flag = false;
+      clear_timerwait_done();
   }
 
-  // enable IRQ to add events
-  enable_events();
+  // update letimer duration
+  last_letimer_duration_ms = LETIMER_PERIOD_MS;
+
+  // enable SI7021 event
+  enable_SI7021_event();
 
   // go to lower EM mode
   if (LOWEST_ENERGY_MODE == 1){
@@ -165,20 +168,48 @@ void timerWaitUs_polled(uint32_t us_wait){
   else if (LOWEST_ENERGY_MODE == 2){
       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
   }
-
-  init_LETIMER0();
 }
 
-bool get_timerWait_flag(){
-  return timerWait_flag;
+
+// waits for at least us_wait microseconds, non-blocking
+// uses LETIMER0_COMP1 register
+// has limit of 16-bit timer value
+void timerWaitUs_irq(uint32_t us_wait){
+  uint64_t num_timer_cycles = ((uint64_t)us_wait * (uint64_t)LETIMER0_FREQ /
+                               (uint64_t)1000000) + 1; // 64-bit due to truncation
+
+  if (num_timer_cycles > 0xFFFF){
+      LOG_ERROR("timerWaitUs_irq() out of range, NO TIMER WILL BE SET!\r\n");
+      return;
+  }
+
+  LETIMER_Enable(LETIMER0, false); // briefly disable until comp1 set
+  // Calculate COMP1 value
+  uint32_t curr_cnt = LETIMER_CounterGet(LETIMER0);
+  uint32_t comp1_cnt;
+  if (curr_cnt < num_timer_cycles){
+      comp1_cnt = curr_cnt + LETIMER0_CMP_ONE_PERIOD - num_timer_cycles;
+  }
+  else{
+      comp1_cnt =  curr_cnt - num_timer_cycles;
+  }
+  LETIMER_CompareSet(LETIMER0, 1, comp1_cnt);
+  LETIMER_IntEnable (LETIMER0, LETIMER_IEN_COMP1);
+  LETIMER_Enable(LETIMER0, true);
+
 }
 
-void set_timerWait_flag(){
-  timerWait_flag = true;
+
+bool get_timerwait_done(){
+  return timerwait_done;
 }
 
-void clear_timerWait_flag(){
-  timerWait_flag = false;
+void set_timerwait_done(){
+  timerwait_done = true;
+}
+
+void clear_timerwait_done(){
+  timerwait_done = false;
 }
 
 uint32_t get_last_LETIMER_duration_ms(){

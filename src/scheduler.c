@@ -18,6 +18,7 @@
 // Define bit-flags
 #define NO_FLAG 0x0
 #define LETIMER0_UF_FLAG LETIMER_IEN_UF
+#define LETIMER0_COMP1_FLAG LETIMER_IEN_COMP1
 
 
 
@@ -41,9 +42,14 @@ scheduler_event getNextEvent(){
           CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
           active_events.letimer0_flags &= ~LETIMER0_UF_FLAG;
           CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return Si7021_LETIMER0_UF;
+          return SI7021_LETIMER0_UF;
       }
-
+      else if (active_events.letimer0_flags & LETIMER0_COMP1_FLAG){
+          CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+          active_events.letimer0_flags &= ~LETIMER0_COMP1_FLAG;
+          CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+          return EVENT_LETIMER0_COMP1;
+      }
   }
 
   return next_event;
@@ -57,9 +63,14 @@ void set_scheduler_event(scheduler_event event){
   switch (event){
     case NO_EVENT:
       break;
-    case Si7021_LETIMER0_UF:
+    case SI7021_LETIMER0_UF:
       CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       active_events.letimer0_flags |= LETIMER0_UF_FLAG;
+      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+      break;
+    case EVENT_LETIMER0_COMP1:
+      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+      active_events.letimer0_flags |= LETIMER0_COMP1_FLAG;
       CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
       break;
     default:
