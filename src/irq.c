@@ -40,8 +40,7 @@
 
 
 // static variable, only for this scope
-static bool SI7021_enabled = true;
-static uint32_t letimer_ms = 0;
+static uint32_t letimer_uf_count = 0;
 
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
@@ -69,28 +68,20 @@ void LETIMER0_IRQHandler(){
 
   // step 3: your handling code
   if (interrupt_flags & LETIMER_IEN_UF){
-
-      // only add event if scheduler enabled
-      if (SI7021_enabled){
-          set_scheduler_event(SI7021_LETIMER0_UF);
-      }
-      else{
-          set_timerwait_done(); // used by timerWaitUs_polled() "spins" until this is set
-      }
-
+      set_scheduler_event(SI7021_LETIMER0_UF);
       // update ms_time on LETIMER_UF (underflow) interrupt
       CORE_ENTER_CRITICAL();
-      letimer_ms += get_last_LETIMER_duration_ms();
+      letimer_uf_count++;
       CORE_EXIT_CRITICAL();
   }
   if (interrupt_flags & LETIMER_IEN_COMP1){
-
      // toggle led for test mode
      #ifdef TEST_MODE
        gpioLed0Toggle();
        TEST_MODE_reset_timerwait_irq_state();
      #endif
 
+     set_timerwait_done(); // for timerWaitUs_polled()
      set_scheduler_event(EVENT_LETIMER0_COMP1);
      LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1); // needs to be disabled
 
@@ -105,20 +96,11 @@ void LETIMER0_IRQHandler(){
 
 }
 
-// enables SI7021 event on LETIMER0_UF
-void enable_SI7021_event(){
-  SI7021_enabled = true;
-}
-
-// disables SI7021 event on LETIMER0_UF
-void disable_SI7021_event(){
-  SI7021_enabled = false;
-}
-
-void add_letimerMilliseconds(uint32_t ms){
-  letimer_ms += ms;
-}
-
 uint32_t letimerMilliseconds(){
-  return letimer_ms;
+  uint32_t time_elapsed = letimer_uf_count * get_LETIMER_UF_duration_ms();
+  uint32_t curr_cnt = LETIMER_CounterGet(LETIMER0);
+  // add time since last LETIMER0_UF
+  time_elapsed += (get_LETIMER_TOP_value() - curr_cnt) * (uint32_t)1000 / get_LETIMER_freq();
+
+  return time_elapsed;
 }

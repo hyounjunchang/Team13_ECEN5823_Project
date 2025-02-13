@@ -26,6 +26,10 @@ void timerWaitUs_irq(uint32_t us_wait);
 bool get_timerwait_done();
 void set_timerwait_done();
 void clear_timerwait_done();
-uint32_t get_last_LETIMER_duration_ms();
+
+// timer info
+uint32_t get_LETIMER_UF_duration_ms();
+uint32_t get_LETIMER_TOP_value();
+uint32_t get_LETIMER_freq();
 
 #endif // GECKO_TIMERS

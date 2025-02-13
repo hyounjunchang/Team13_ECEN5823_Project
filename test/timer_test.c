@@ -38,8 +38,6 @@ void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us){
     case START_TIMER:
       timerWaitUs_irq(us);
       NEXT_STATE = WAIT_TIMER;
-      // add a 0.25 x us poll to differentiate between different modes
-      timerWaitUs_polled(us/4);
       break;
     case WAIT_TIMER: // do nothing if waiting timer
       break;

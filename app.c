@@ -231,25 +231,23 @@ SL_WEAK void app_process_action(void)
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
 
-#ifdef TEST_MODE
-  //TEST_MODE_timerWaitUs_polled_LED_blink(1000000);
-  TEST_MODE_timerWaitUs_irq_LED_toggle(100000);
-#else
-    scheduler_event curr_event = getNextEvent();
+  #ifdef TEST_MODE
+    //TEST_MODE_timerWaitUs_polled_LED_blink(1000000);
+    TEST_MODE_timerWaitUs_irq_LED_toggle(100000);
+  #else
+      scheduler_event curr_event = getNextEvent();
 
-    while (curr_event != NO_EVENT){ // while loop for cpu sleep
-      switch (curr_event){
-        case SI7021_LETIMER0_UF:
-            SI7021_get_temperature();
-          break;
-        default:
-          break;
+      while (curr_event != NO_EVENT){ // while loop for cpu sleep
+        switch (curr_event){
+          case SI7021_LETIMER0_UF:
+              SI7021_get_temperature();
+            break;
+          default:
+            break;
+        }
+        curr_event = getNextEvent();
       }
-      curr_event = getNextEvent();
-    }
-
-  }
-#endif
+  #endif
 
   if (LOWEST_ENERGY_MODE == 1){
     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
