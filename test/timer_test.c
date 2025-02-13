@@ -15,6 +15,7 @@
 
 #include "src/timer.h"
 #include "src/gpio.h"
+#include "em_gpio.h"
 
 /*
 void TEST_MODE_timerWaitUs_polled_LED_blink(uint32_t us){
@@ -38,6 +39,8 @@ void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us){
   switch (timerwait_irq_state){
     case START_TIMER:
       timerWaitUs_irq(us);
+      if(GPIO_PinInGet(gpioPortF, 4))
+        delayApprox(3500000);
       NEXT_STATE = WAIT_TIMER;
       break;
     case WAIT_TIMER: // do nothing if waiting timer
@@ -51,3 +54,15 @@ void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us){
 void TEST_MODE_reset_timerwait_irq_state(){
   timerwait_irq_state = START_TIMER;
 }
+
+
+// A value of 3500000 is ~ 1 second.
+void delayApprox (int delay)
+{
+  volatile int i;
+
+  for (i = 0; i < delay; ) {
+      i=i+1;
+  }
+
+} // delayApprox()

@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include "timer.h"
 #include "gpio.h"
-#include "app.c"
+#include "app.h"
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -74,8 +74,14 @@ float SI7021_convert_temp(uint16_t temp_code){
 
 // Used from Lecture 6 slides
 void SI7021_start_measure_temp(){
-  // config NVIC to generate an IRQ for the I2C0 module.
-  NVIC_EnableIRQ(I2C0_IRQn);
+  // Sleep at EM1 during I2C
+  if (LOWEST_ENERGY_MODE == 2){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  if (LOWEST_ENERGY_MODE == 3){
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
 
   I2C_TransferSeq_TypeDef transferSequence; // this one can be local
   // write command to sensor to read temperature data
@@ -85,7 +91,26 @@ void SI7021_start_measure_temp(){
   transferSequence.buf[0].data = &cmd_data; // pointer to data to write
   transferSequence.buf[0].len = sizeof(cmd_data);
   transferStatus = I2C_TransferInit(I2C0, &transferSequence);
+  //transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
+  if (transferStatus < 0) {
+        LOG_ERROR("%d\r\n", transferStatus);
+   }
+}
 
+void SI7021_wait_temp_sensor(){
+  //restore lowest EM mode
+  if (LOWEST_ENERGY_MODE == 2){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
+  if (LOWEST_ENERGY_MODE == 3){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+
+  timerWaitUs_irq(11000); // wait 11ms for sensor data
+}
+
+void SI7021_start_read_sensor(){
   // Sleep at EM1 during I2C
   if (LOWEST_ENERGY_MODE == 2){
      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
@@ -94,25 +119,6 @@ void SI7021_start_measure_temp(){
   if (LOWEST_ENERGY_MODE == 3){
      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
   }
-
-}
-
-void SI7021_wait_temp_sensor(){
-    //restore lowest EM mode
-    if (LOWEST_ENERGY_MODE == 2){
-       sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-    }
-    if (LOWEST_ENERGY_MODE == 3){
-       sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-    }
-
-    timerWaitUs_irq(11000); // wait 11ms for sensor data
-}
-
-void SI7021_start_read_sensor(){
-  // config NVIC to generate an IRQ for the I2C0 module.
-  NVIC_EnableIRQ(I2C0_IRQn);
 
   // send Read command
   I2C_TransferSeq_TypeDef transferSequence; // this one can be local
@@ -122,14 +128,9 @@ void SI7021_start_read_sensor(){
   transferSequence.buf[0].data = read_data; // pointer to data to write
   transferSequence.buf[0].len = sizeof(read_data);
   transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-
-  // Sleep at EM1 during I2C
-  if (LOWEST_ENERGY_MODE == 2){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  if (LOWEST_ENERGY_MODE == 3){
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  //transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
+  if (transferStatus < 0) {
+        LOG_ERROR("%d\r\n", transferStatus);
   }
 }
 
@@ -152,7 +153,6 @@ uint16_t SI7021_read_measured_temp(){
   // convert sensor value to temperature
   float sensor_temp = SI7021_convert_temp(sensor_value);
   int rounded_sensor_temp = (int)sensor_temp;
-  LOG_INFO("Read temperature %iC\r\n", rounded_sensor_temp);
 
   return rounded_sensor_temp;
 }

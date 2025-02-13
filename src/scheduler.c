@@ -27,6 +27,7 @@ typedef struct {
 
 static event_flags active_events = {NO_FLAG};
 static SI7021_state currState_SI7021 = SI7021_READ_TEMP_POWER_OFF;
+static SI7021_state nextState_SI7021 = SI7021_POWER_ON_RESET;
 
 // edited from Lecture 6 slides
 // returns a scheduler_event among one of the events available
@@ -38,11 +39,11 @@ scheduler_event getNextEvent(){
   // clear flag and return event
   // This is different from register flags!!!
   if (active_events.flag_0){
-      if (active_events.flag_0 & LETIMER0_UF_FLAG){
+      if (active_events.flag_0 & I2C_TRANSFER_FLAG){
           CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-          active_events.flag_0 &= ~LETIMER0_UF_FLAG;
+          active_events.flag_0 &= ~I2C_TRANSFER_FLAG;
           CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return EVENT_LETIMER0_UF;
+          return EVENT_I2C_TRANSFER;
       }
       else if (active_events.flag_0 & LETIMER0_COMP1_FLAG){
           CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
@@ -50,11 +51,11 @@ scheduler_event getNextEvent(){
           CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
           return EVENT_LETIMER0_COMP1;
       }
-      else if (active_events.flag_0 & I2C_TRANSFER_FLAG){
+      else if (active_events.flag_0 & LETIMER0_UF_FLAG){
           CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-          active_events.flag_0 &= ~I2C_TRANSFER_FLAG;
+          active_events.flag_0 &= ~LETIMER0_UF_FLAG;
           CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return EVENT_I2C_TRANSFER;
+          return EVENT_LETIMER0_UF;
       }
   }
 
@@ -90,7 +91,6 @@ void set_scheduler_event(scheduler_event event){
 }
 
 void update_SI7021_state_machine(scheduler_event event){
-  static SI7021_state nextState_SI7021 = SI7021_READ_TEMP_POWER_OFF;
   currState_SI7021 = nextState_SI7021;
   switch(currState_SI7021){
     case SI7021_READ_TEMP_POWER_OFF:

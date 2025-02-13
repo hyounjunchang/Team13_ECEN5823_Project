@@ -52,14 +52,6 @@ static uint32_t letimer_uf_count = 0;
 void LETIMER0_IRQHandler(){
   CORE_DECLARE_IRQ_STATE;
 
-  // disable going to lower EM mode
-  if (LOWEST_ENERGY_MODE == 1){
-      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  else if (LOWEST_ENERGY_MODE == 2){
-      sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
-  }
-
   // Timer IRQ explanation:
   // COMP0 is set to num_clocks for period, COMP1 is set to num_clocks for LED on
   // LED is on when COMP1 flag is set, turned off when underflow flag is set
@@ -89,13 +81,6 @@ void LETIMER0_IRQHandler(){
      set_scheduler_event(EVENT_LETIMER0_COMP1);
      LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1); // needs to be disabled
   }
-  // go to lower EM mode
-  if (LOWEST_ENERGY_MODE == 1){
-      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  else if (LOWEST_ENERGY_MODE == 2){
-      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-  }
 
 }
 
@@ -117,8 +102,10 @@ void I2C0_IRQHandler()
   if (transferStatus == i2cTransferDone) {
       set_scheduler_event(EVENT_I2C_TRANSFER);
   }
-  if (transferStatus < 0) {
-      LOG_ERROR("%d", transferStatus);
+  else if (transferStatus < 0) {
+      LOG_ERROR("%d\r\n", transferStatus);
   }
+
+  // do nothing if transferStatus == i2cTransferInProgress
 
 }

@@ -241,20 +241,23 @@ SL_WEAK void app_process_action(void)
 
   #ifdef TEST_MODE
     //TEST_MODE_timerWaitUs_polled_LED_blink(1000000);
-    TEST_MODE_timerWaitUs_irq_LED_toggle(100000);
+    TEST_MODE_timerWaitUs_irq_LED_toggle(2000000);
   #else
       scheduler_event curr_event = getNextEvent();
+      uint16_t temperature;
       while (curr_event != NO_EVENT){
         update_SI7021_state_machine(curr_event);
         SI7021_state currState_SI7021 = get_SI7021_state();
 
         switch (currState_SI7021){
           case SI7021_READ_TEMP_POWER_OFF:
-            SI7021_read_measured_temp();
+            temperature = SI7021_read_measured_temp();
+            LOG_INFO("Read temperature %iC\r\n", temperature);
             gpioPowerOff_SI7021();
             break;
           case SI7021_POWER_ON_RESET:
             gpioPowerOn_SI7021();
+            NVIC_EnableIRQ(I2C0_IRQn); // config NVIC to generate an IRQ for the I2C0 module.
             break;
           case SI7021_I2C_INITIATE_SENSOR:
             SI7021_start_measure_temp();
@@ -264,6 +267,7 @@ SL_WEAK void app_process_action(void)
             break;
           case SI7021_I2C_READ_SENSOR:
             SI7021_start_read_sensor();
+            NVIC_DisableIRQ(I2C0_IRQn);
             break;
           default:
             break;

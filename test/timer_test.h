@@ -23,4 +23,6 @@
 void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us);
 void TEST_MODE_reset_timerwait_irq_state();
 
+void delayApprox(int delay);
+
 #endif /* TEST_TIMER_TEST_H_ */
