@@ -77,10 +77,11 @@
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-
-// define unit tests
-#include "test/timer_test.h"
-
+// un-comment TEST_MODE from app.h
+#ifdef TEST_MODE
+  // define unit tests
+  #include "test/timer_test.h"
+#endif
 
 
 
@@ -183,6 +184,10 @@ SL_WEAK void app_init(void)
   gpioInit();
   init_LETIMER0();
 
+  #ifdef TEST_MODE
+    gpioInit_LED();
+  #endif
+
   // from lecture 5
   // This is the last thing you do prior to entering your while (1) loop
   // see: ./gecko_sdk_3.2.3/platform/CMSIS/Include/core_cm4.h for Gecko SDK 3.2.3
@@ -226,24 +231,31 @@ SL_WEAK void app_process_action(void)
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
 
-  scheduler_event curr_event = getNextEvent();
+#ifdef TEST_MODE
+  //TEST_MODE_timerWaitUs_polled_LED_blink(1000000);
+  TEST_MODE_timerWaitUs_irq_LED_toggle(100000);
+#else
+    scheduler_event curr_event = getNextEvent();
 
-  while (curr_event != NO_EVENT){ // while loop for cpu sleep
-    switch (curr_event){
-      case SI7021_LETIMER0_UF:
-          SI7021_get_temperature();
-        break;
-      default:
-        break;
+    while (curr_event != NO_EVENT){ // while loop for cpu sleep
+      switch (curr_event){
+        case SI7021_LETIMER0_UF:
+            SI7021_get_temperature();
+          break;
+        default:
+          break;
+      }
+      curr_event = getNextEvent();
     }
-    curr_event = getNextEvent();
+
   }
+#endif
 
   if (LOWEST_ENERGY_MODE == 1){
-      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
   }
   else if (LOWEST_ENERGY_MODE == 2){
-      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
   }
 
 } // app_process_action()

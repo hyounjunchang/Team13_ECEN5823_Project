@@ -136,6 +136,9 @@ void gpioLed0SetOff()
 	GPIO_PinOutClear(LED_port, LED0_pin);
 }
 
+void gpioLed0Toggle(){
+  GPIO_PinOutToggle(LED_port, LED0_pin);
+}
 
 void gpioLed1SetOn()
 {
@@ -147,8 +150,6 @@ void gpioLed1SetOff()
 {
 	GPIO_PinOutClear(LED_port, LED1_pin);
 }
-
-
 
 
 

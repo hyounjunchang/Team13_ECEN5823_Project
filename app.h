@@ -56,6 +56,9 @@
 //#define LOWEST_ENERGY_MODE 2
 #define LOWEST_ENERGY_MODE 3
 
+// comment/uncomment TEST_MODE to disable/enable
+#define TEST_MODE
+
 /**************************************************************************//**
  * Application Init.
  *****************************************************************************/

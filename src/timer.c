@@ -94,7 +94,6 @@ void init_LETIMER0(){
 
 
 // waits for at least us_wait microseconds, blocking
-// modifies LETIMER0_CNT register
 void timerWaitUs_polled(uint32_t us_wait){
   CORE_DECLARE_IRQ_STATE;
 
@@ -121,11 +120,9 @@ void timerWaitUs_polled(uint32_t us_wait){
   clear_timerwait_done();
 
   while (num_timer_cycles != 0){
+      // stop timer
       LETIMER_Enable(LETIMER0, false);
-
-      // Clear all IRQ flags in the LETIMER0 IF status register
-      LETIMER_IntClear (LETIMER0, 0xFFFFFFFF);
-      LETIMER_IntEnable (LETIMER0, LETIMER_IEN_UF);
+      LETIMER_IntEnable (LETIMER0, LETIMER_IEN_UF); // turn on in case
 
       // set CNT variable
       if (num_timer_cycles <= 0xFFFF){
@@ -173,6 +170,7 @@ void timerWaitUs_polled(uint32_t us_wait){
 
 // waits for at least us_wait microseconds, non-blocking
 // uses LETIMER0_COMP1 register
+// causes problems if used alongside timerWaitUS_polled()
 // has limit of 16-bit timer value
 void timerWaitUs_irq(uint32_t us_wait){
   uint64_t num_timer_cycles = ((uint64_t)us_wait * (uint64_t)LETIMER0_FREQ /

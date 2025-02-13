@@ -43,6 +43,7 @@ void gpioPowerOff_SI7021();
 // LED
 void gpioLed0SetOn();
 void gpioLed0SetOff();
+void gpioLed0Toggle();
 void gpioLed1SetOn();
 void gpioLed1SetOff();
 

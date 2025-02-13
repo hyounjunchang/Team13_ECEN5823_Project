@@ -24,8 +24,6 @@
 // for power mode
 #include "app.h"
 
-#include <stdbool.h>
-
 // add event to scheduler
 #include "scheduler.h"
 
@@ -35,6 +33,11 @@
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
+
+#ifdef TEST_MODE
+  #include "test/timer_test.h"
+#endif
+
 
 // static variable, only for this scope
 static bool SI7021_enabled = true;
@@ -80,11 +83,19 @@ void LETIMER0_IRQHandler(){
       letimer_ms += get_last_LETIMER_duration_ms();
       CORE_EXIT_CRITICAL();
   }
+  if (interrupt_flags & LETIMER_IEN_COMP1){
 
-  // enable Interrupt again
-  LETIMER_IntEnable(LETIMER0, interrupt_flags); // set interrupt flags
+     // toggle led for test mode
+     #ifdef TEST_MODE
+       gpioLed0Toggle();
+       TEST_MODE_reset_timerwait_irq_state();
+     #endif
 
-  // disable going to lower EM mode
+     set_scheduler_event(EVENT_LETIMER0_COMP1);
+     LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1); // needs to be disabled
+
+  }
+  // go to lower EM mode
   if (LOWEST_ENERGY_MODE == 1){
       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
   }
