@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include "timer.h"
 #include "gpio.h"
+#include "app.c"
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -39,7 +40,14 @@
 #define MEASURE_TEMP_NO_HOLD 0xF3// no hold master mode, no clock stretching
 
 
+
+// global variables
+I2C_TransferReturn_TypeDef transferStatus; // make this global for IRQs in A4
+uint8_t cmd_data; // make this global for IRQs in A4
+uint8_t read_data[2]; // make this global for IRQs in A4
+
 // Used from Lecture 6 slides
+// Using I2CSPM_Init, as it's stated it's okay per spec
 void initialize_I2C(){
   // Initialize the I2C hardware
   I2CSPM_Init_TypeDef I2C_Config = {
@@ -59,25 +67,6 @@ void initialize_I2C(){
   // uint32_t i2c_bus_frequency = I2C_BusFreqGet (I2C0);
 }
 
-// Used from Lecture 6 slides
-int SI7021_get_temperature(){
-  gpioPowerOn_SI7021();
-  // wait for power-up time (max 80ms)
-  timerWaitUs_polled(80000);
-
-  SI7021_start_measure_temp();
-  // wait for temperature reading, max 10.8ms for 14-bit
-  timerWaitUs_polled(11000); // wait at least 11ms
-
-  uint16_t sensor_value = SI7021_read_measured_temp();
-  float sensor_temp = SI7021_convert_temp(sensor_value);
-  int rounded_sensor_temp = (int)sensor_temp;
-  LOG_INFO("Read temperature %iC\r\n", rounded_sensor_temp);
-
-  gpioPowerOff_SI7021();
-  return sensor_temp;
-}
-
 // returns temperature in Celsius
 float SI7021_convert_temp(uint16_t temp_code){
   return (175.72 * temp_code) / 65536 - 46.85;
@@ -85,39 +74,73 @@ float SI7021_convert_temp(uint16_t temp_code){
 
 // Used from Lecture 6 slides
 void SI7021_start_measure_temp(){
-  // Send Measure Temperature command
-  I2C_TransferReturn_TypeDef transferStatus; // make this global for IRQs in A4
-  I2C_TransferSeq_TypeDef transferSequence; // this one can be local
-  uint8_t cmd_data; // make this global for IRQs in A4
+  // config NVIC to generate an IRQ for the I2C0 module.
+  NVIC_EnableIRQ(I2C0_IRQn);
 
+  I2C_TransferSeq_TypeDef transferSequence; // this one can be local
   // write command to sensor to read temperature data
   cmd_data = MEASURE_TEMP_NO_HOLD;
   transferSequence.addr = SI7021_ADDR << 1; // shift device address left
   transferSequence.flags = I2C_FLAG_WRITE;
   transferSequence.buf[0].data = &cmd_data; // pointer to data to write
   transferSequence.buf[0].len = sizeof(cmd_data);
-  transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
-  if (transferStatus != i2cTransferDone) {
-      LOG_ERROR("I2C transfer Failed\r\n");
+  transferStatus = I2C_TransferInit(I2C0, &transferSequence);
+
+  // Sleep at EM1 during I2C
+  if (LOWEST_ENERGY_MODE == 2){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  if (LOWEST_ENERGY_MODE == 3){
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
   }
 
 }
 
-uint16_t SI7021_read_measured_temp(){
-  // send Read command
-  I2C_TransferReturn_TypeDef transferStatus; // make this global for IRQs in A4
-  I2C_TransferSeq_TypeDef transferSequence; // this one can be local
+void SI7021_wait_temp_sensor(){
+    //restore lowest EM mode
+    if (LOWEST_ENERGY_MODE == 2){
+       sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+    }
+    if (LOWEST_ENERGY_MODE == 3){
+       sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+    }
 
-  // 2-byte data received
-  uint8_t read_data[2]; // make this global for IRQs in A4
+    timerWaitUs_irq(11000); // wait 11ms for sensor data
+}
+
+void SI7021_start_read_sensor(){
+  // config NVIC to generate an IRQ for the I2C0 module.
+  NVIC_EnableIRQ(I2C0_IRQn);
+
+  // send Read command
+  I2C_TransferSeq_TypeDef transferSequence; // this one can be local
 
   transferSequence.addr = SI7021_ADDR << 1; // shift device address left
   transferSequence.flags = I2C_FLAG_READ;
   transferSequence.buf[0].data = read_data; // pointer to data to write
   transferSequence.buf[0].len = sizeof(read_data);
-  transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
-  if (transferStatus != i2cTransferDone) {
-      LOG_ERROR("I2C transfer Failed\r\n");
+  transferStatus = I2C_TransferInit(I2C0, &transferSequence);
+
+  // Sleep at EM1 during I2C
+  if (LOWEST_ENERGY_MODE == 2){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  if (LOWEST_ENERGY_MODE == 3){
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+}
+
+uint16_t SI7021_read_measured_temp(){
+  //restore lowest EM mode
+  if (LOWEST_ENERGY_MODE == 2){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
+  if (LOWEST_ENERGY_MODE == 3){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
   }
 
   // SI7021 sends 2-byte data, MSB then LSB (big-endian)
@@ -126,5 +149,10 @@ uint16_t SI7021_read_measured_temp(){
   uint16_t sensor_value = read_data[1];
   sensor_value += (uint16_t)read_data[0] << 8;
 
-  return sensor_value;
+  // convert sensor value to temperature
+  float sensor_temp = SI7021_convert_temp(sensor_value);
+  int rounded_sensor_temp = (int)sensor_temp;
+  LOG_INFO("Read temperature %iC\r\n", rounded_sensor_temp);
+
+  return rounded_sensor_temp;
 }

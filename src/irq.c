@@ -5,7 +5,8 @@
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
  * @date      Jan 30, 2025
  *
- * @resources
+ * @resources referenced I2C interrupt handling example code from Silicon Labs
+https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/i2c/i2c/src/main_efr.c
  *
  *
  */
@@ -29,6 +30,9 @@
 
 // add bool type
 #include <stdbool.h>
+
+// for I2C typedefs
+#include <em_i2c.h>
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -68,7 +72,7 @@ void LETIMER0_IRQHandler(){
 
   // step 3: your handling code
   if (interrupt_flags & LETIMER_IEN_UF){
-      set_scheduler_event(SI7021_LETIMER0_UF);
+      set_scheduler_event(EVENT_LETIMER0_UF);
       // update ms_time on LETIMER_UF (underflow) interrupt
       CORE_ENTER_CRITICAL();
       letimer_uf_count++;
@@ -84,7 +88,6 @@ void LETIMER0_IRQHandler(){
      set_timerwait_done(); // for timerWaitUs_polled()
      set_scheduler_event(EVENT_LETIMER0_COMP1);
      LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1); // needs to be disabled
-
   }
   // go to lower EM mode
   if (LOWEST_ENERGY_MODE == 1){
@@ -103,4 +106,19 @@ uint32_t letimerMilliseconds(){
   time_elapsed += (get_LETIMER_TOP_value() - curr_cnt) * (uint32_t)1000 / get_LETIMER_freq();
 
   return time_elapsed;
+}
+
+// From Lecture 8
+void I2C0_IRQHandler()
+{
+  // check return value
+  I2C_TransferReturn_TypeDef transferStatus;
+  transferStatus = I2C_Transfer(I2C0);
+  if (transferStatus == i2cTransferDone) {
+      set_scheduler_event(EVENT_I2C_TRANSFER);
+  }
+  if (transferStatus < 0) {
+      LOG_ERROR("%d", transferStatus);
+  }
+
 }

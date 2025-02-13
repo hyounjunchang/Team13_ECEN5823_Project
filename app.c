@@ -194,6 +194,14 @@ SL_WEAK void app_init(void)
   NVIC_ClearPendingIRQ (LETIMER0_IRQn);
   NVIC_EnableIRQ(LETIMER0_IRQn); // config NVIC to take IRQs from LETIMER0
 
+  // set EM mode for sleep
+  if (LOWEST_ENERGY_MODE == 1){
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  else if (LOWEST_ENERGY_MODE == 2){
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
+
 } // app_init()
 
 
@@ -236,11 +244,26 @@ SL_WEAK void app_process_action(void)
     TEST_MODE_timerWaitUs_irq_LED_toggle(100000);
   #else
       scheduler_event curr_event = getNextEvent();
+      while (curr_event != NO_EVENT){
+        update_SI7021_state_machine(curr_event);
+        SI7021_state currState_SI7021 = get_SI7021_state();
 
-      while (curr_event != NO_EVENT){ // while loop for cpu sleep
-        switch (curr_event){
-          case SI7021_LETIMER0_UF:
-              SI7021_get_temperature();
+        switch (currState_SI7021){
+          case SI7021_READ_TEMP_POWER_OFF:
+            SI7021_read_measured_temp();
+            gpioPowerOff_SI7021();
+            break;
+          case SI7021_POWER_ON_RESET:
+            gpioPowerOn_SI7021();
+            break;
+          case SI7021_I2C_INITIATE_SENSOR:
+            SI7021_start_measure_temp();
+            break;
+          case SI7021_WAIT_SENSOR:
+            SI7021_wait_temp_sensor();
+            break;
+          case SI7021_I2C_READ_SENSOR:
+            SI7021_start_read_sensor();
             break;
           default:
             break;
@@ -248,14 +271,6 @@ SL_WEAK void app_process_action(void)
         curr_event = getNextEvent();
       }
   #endif
-
-  if (LOWEST_ENERGY_MODE == 1){
-    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  else if (LOWEST_ENERGY_MODE == 2){
-    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-  }
-
 } // app_process_action()
 
 

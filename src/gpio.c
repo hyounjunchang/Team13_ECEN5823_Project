@@ -89,8 +89,6 @@ void gpioInit_SI7021(){
   GPIO_DriveStrengthSet(SI7021_ENABLE_PORT, gpioDriveStrengthStrongAlternateStrong); // Strong, 10mA
 
   // Set GPIOs mode of operation
-  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1
-  GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SDA_PIN, gpioModeWiredAndPullUp, 1);
   GPIO_PinModeSet(SI7021_ENABLE_PORT, SI7021_ENABLE_PIN, gpioModePushPull, 0); // push-pull, initialize with 0 (off)
 }
 
@@ -103,9 +101,10 @@ void gpioPowerOn_SI7021(){
 
   // 2- Wait for external device to complete its Power On Reset (POR) sequence
   // 80ms max power-up time
-  timerWaitUs_polled(80000);
+  timerWaitUs_irq(80000);
 
   // 3- Setup/enable GPIOs used for communication (I2C GPIOs: SCLK,SDA) with the device
+  // this does not depend on step 2, so it's fine to call
   GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeWiredAndPullUp, 1); // open drain with pull-up, default to 1
   GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SDA_PIN, gpioModeWiredAndPullUp, 1);
 

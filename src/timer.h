@@ -19,7 +19,7 @@
 void init_LETIMER0();
 
 // waits for at least us_wait microseconds
-void timerWaitUs_polled(uint32_t us_wait);
+// void timerWaitUs_polled(uint32_t us_wait); use timerWaitUs_irq instead
 void timerWaitUs_irq(uint32_t us_wait);
 
 // flags for timerWait

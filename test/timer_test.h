@@ -18,7 +18,7 @@
 
 #include <stdint.h> // for uint32_t declaration
 
-void TEST_MODE_timerWaitUs_polled_LED_blink(uint32_t us);
+//void TEST_MODE_timerWaitUs_polled_LED_blink(uint32_t us);
 
 void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us);
 void TEST_MODE_reset_timerwait_irq_state();

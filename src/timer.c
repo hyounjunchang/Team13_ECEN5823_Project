@@ -94,6 +94,7 @@ void init_LETIMER0(){
   LETIMER_Enable (LETIMER0, true);
 }
 
+/*
 // waits for at least us_wait microseconds, blocking
 // uses COMP1 register
 void timerWaitUs_polled(uint32_t us_wait){
@@ -151,6 +152,7 @@ void timerWaitUs_polled(uint32_t us_wait){
       sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
   }
 }
+*/
 
 
 // waits for at least us_wait microseconds, non-blocking

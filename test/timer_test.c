@@ -16,7 +16,7 @@
 #include "src/timer.h"
 #include "src/gpio.h"
 
-
+/*
 void TEST_MODE_timerWaitUs_polled_LED_blink(uint32_t us){
   gpioInit_LED();
   gpioLed0SetOn();
@@ -24,6 +24,7 @@ void TEST_MODE_timerWaitUs_polled_LED_blink(uint32_t us){
   gpioLed0SetOff();
   timerWaitUs_polled(us);
 }
+*/
 
 typedef enum {
   START_TIMER,
