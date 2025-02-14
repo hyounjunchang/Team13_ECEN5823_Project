@@ -57,7 +57,7 @@ void LETIMER0_IRQHandler(){
   // LED is on when COMP1 flag is set, turned off when underflow flag is set
 
   // step 1: determine pending interrupts in peripheral
-  uint32_t interrupt_flags = LETIMER_IntGet(LETIMER0); // from LETIMER0->IF;
+  uint32_t interrupt_flags = LETIMER_IntGetEnabled(LETIMER0); // from LETIMER0->IF;
 
   // step 2: clear pending interrupts in peripheral
   LETIMER_IntClear(LETIMER0, interrupt_flags);
@@ -79,9 +79,11 @@ void LETIMER0_IRQHandler(){
 
      set_timerwait_done(); // for timerWaitUs_polled()
      set_scheduler_event(EVENT_LETIMER0_COMP1);
-     LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1); // needs to be disabled
+     LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1);
   }
 
+  LOG_INFO("Current State: %d\r\n", get_SI7021_state());
+  LOG_INFO("Interrupt_flags: %x\r\n", interrupt_flags);
 }
 
 uint32_t letimerMilliseconds(){
@@ -96,6 +98,8 @@ uint32_t letimerMilliseconds(){
 // From Lecture 8
 void I2C0_IRQHandler()
 {
+  LOG_INFO ("Current State: %d\r\n", get_SI7021_state());
+
   // check return value
   I2C_TransferReturn_TypeDef transferStatus;
   transferStatus = I2C_Transfer(I2C0);

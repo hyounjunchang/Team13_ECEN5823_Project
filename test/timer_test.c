@@ -16,6 +16,7 @@
 #include "src/timer.h"
 #include "src/gpio.h"
 #include "em_gpio.h"
+#include "em_letimer.h"
 
 /*
 void TEST_MODE_timerWaitUs_polled_LED_blink(uint32_t us){
@@ -35,12 +36,15 @@ typedef enum {
 static uint16_t timerwait_irq_state = START_TIMER;
 
 void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us){
+  // LETIMER_IntEnable() must hanve LETIMER_IntClear()
+  LETIMER_IntClear(LETIMER0, LETIMER_IEN_COMP1);
+  LETIMER_IntEnable(LETIMER0, LETIMER_IEN_COMP1);
   timer_irq_state NEXT_STATE = timerwait_irq_state;
   switch (timerwait_irq_state){
     case START_TIMER:
       timerWaitUs_irq(us);
       if(GPIO_PinInGet(gpioPortF, 4))
-        delayApprox(3500000);
+        delayApprox(350000);
       NEXT_STATE = WAIT_TIMER;
       break;
     case WAIT_TIMER: // do nothing if waiting timer

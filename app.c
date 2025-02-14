@@ -180,9 +180,17 @@ SL_WEAK void app_init(void)
   // This is called once during start-up.
   // Don't call any Bluetooth API functions until after the boot event.
 
+  // set EM mode for sleep
+  if (LOWEST_ENERGY_MODE == 1){
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  else if (LOWEST_ENERGY_MODE == 2){
+    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+  }
+
   initialize_oscillators();
-  gpioInit();
   init_LETIMER0();
+  gpioInit();
 
   #ifdef TEST_MODE
     gpioInit_LED();
@@ -193,14 +201,6 @@ SL_WEAK void app_init(void)
   // see: ./gecko_sdk_3.2.3/platform/CMSIS/Include/core_cm4.h for Gecko SDK 3.2.3
   NVIC_ClearPendingIRQ (LETIMER0_IRQn);
   NVIC_EnableIRQ(LETIMER0_IRQn); // config NVIC to take IRQs from LETIMER0
-
-  // set EM mode for sleep
-  if (LOWEST_ENERGY_MODE == 1){
-    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  else if (LOWEST_ENERGY_MODE == 2){
-    sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-  }
 
 } // app_init()
 

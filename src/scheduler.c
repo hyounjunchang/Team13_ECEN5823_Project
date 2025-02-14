@@ -27,7 +27,6 @@ typedef struct {
 
 static event_flags active_events = {NO_FLAG};
 static SI7021_state currState_SI7021 = SI7021_READ_TEMP_POWER_OFF;
-static SI7021_state nextState_SI7021 = SI7021_POWER_ON_RESET;
 
 // edited from Lecture 6 slides
 // returns a scheduler_event among one of the events available
@@ -91,7 +90,7 @@ void set_scheduler_event(scheduler_event event){
 }
 
 void update_SI7021_state_machine(scheduler_event event){
-  currState_SI7021 = nextState_SI7021;
+  SI7021_state nextState_SI7021 = currState_SI7021;
   switch(currState_SI7021){
     case SI7021_READ_TEMP_POWER_OFF:
       if (event == EVENT_LETIMER0_UF){
@@ -121,7 +120,7 @@ void update_SI7021_state_machine(scheduler_event event){
     default:
       break;
   }
-
+  currState_SI7021 = nextState_SI7021;
 }
 
 SI7021_state get_SI7021_state(){

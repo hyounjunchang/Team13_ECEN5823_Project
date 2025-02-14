@@ -59,6 +59,11 @@ void init_LETIMER0(){
   // example code from lecture 5
   uint32_t temp;
 
+  // Clear all IRQ flags in the LETIMER0 IF status register
+  LETIMER_IntClear (LETIMER0, 0xFFFFFFFF); // punch them all down
+  // Disable all interrupts before re-enabling... (since we might have used different interrupts)
+  LETIMER_IntDisable(LETIMER0, 0xFFFFFFFF);
+
   // this data structure is passed to LETIMER_Init (), used to set LETIMER0_CTRL reg bits and other values
   const LETIMER_Init_TypeDef letimerInitData = {
   false, // enable; don't enable when init completes, we'll enable last
@@ -80,11 +85,6 @@ void init_LETIMER0(){
 
   // calculate and load COMP0 (top)
   LETIMER_CompareSet(LETIMER0, 0, LETIMER0_TOP_VALUE); //value has to be within 16-bits
-
-  // Clear all IRQ flags in the LETIMER0 IF status register
-  LETIMER_IntClear (LETIMER0, 0xFFFFFFFF); // punch them all down
-  // Disable all interrupts before re-enabling... (since we might have used different interrupts)
-  LETIMER_IntDisable(LETIMER0, 0xFFFFFFFF);
 
   // Set UF flag in LETIMER0_IEN, so that the timer will generate IRQs to the NVIC.
   temp = LETIMER_IEN_UF;
@@ -179,9 +179,11 @@ void timerWaitUs_irq(uint32_t us_wait){
       comp1_cnt =  curr_cnt - num_timer_cycles;
   }
   LETIMER_CompareSet(LETIMER0, 1, comp1_cnt);
-  LETIMER_IntEnable (LETIMER0, LETIMER_IEN_COMP1);
-  LETIMER_Enable(LETIMER0, true);
 
+  // LETIMER_IntEnable() must hanve LETIMER_IntClear()
+  LETIMER_IntClear(LETIMER0, LETIMER_IEN_COMP1);
+  LETIMER_IntEnable(LETIMER0, LETIMER_IEN_COMP1);
+  LETIMER_Enable(LETIMER0, true);
 }
 
 bool get_timerwait_done(){
