@@ -3,10 +3,9 @@
  * @brief     Functions for Interrupt Service Handlers (IRQ)
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Jan 30, 2025
+ * @date      Feb 23, 2025
  *
- * @resources referenced I2C interrupt handling example code from Silicon Labs
-https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/i2c/i2c/src/main_efr.c
+ * @resources ECEN5823 isr_and_scheduler_issues.txt, Lecture 8 Slides
  *
  *
  */
@@ -46,9 +45,6 @@ https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/i2c/i2c/s
 // static variable, only for this scope
 static uint32_t letimer_uf_count = 0;
 
-// from i2c.c
-extern I2C_TransferReturn_TypeDef transferStatus;
-
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
 // referenced from ECEN5823 isr_and_scheduler_issues.txt
@@ -84,9 +80,6 @@ void LETIMER0_IRQHandler(){
      set_scheduler_event(EVENT_LETIMER0_COMP1);
      LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1);
   }
-
-  LOG_INFO("Current State: %d\r\n", get_SI7021_state());
-  LOG_INFO("Interrupt_flags: %x\r\n", interrupt_flags);
 }
 
 uint32_t letimerMilliseconds(){
@@ -100,8 +93,6 @@ uint32_t letimerMilliseconds(){
 
 // From Lecture 8
 void I2C0_IRQHandler(void) {
-   LOG_INFO("Current State: %d\r\n", get_SI7021_state());
-
   /*
    * see em_i2.c
    * has access to global variables (transferSequence, cmd_data, read_data)

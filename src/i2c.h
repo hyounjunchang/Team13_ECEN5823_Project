@@ -3,7 +3,7 @@
  * @brief     I2C module header for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 4, 2025
+ * @date      Feb 13, 2025
  *
  * @resources
  *

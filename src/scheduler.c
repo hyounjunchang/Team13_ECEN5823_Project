@@ -3,7 +3,7 @@
  * @brief     Task Scheduler for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 3, 2025
+ * @date      Feb 13, 2025
  *
  * @resources ECEN5823 Lecture 6 example code
  *

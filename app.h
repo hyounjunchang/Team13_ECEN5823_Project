@@ -58,6 +58,8 @@
 
 // comment/un-comment TEST_MODE to disable/enable
 //#define TEST_MODE
+// comment/un-comment DEBUG_MODE to disable/enable
+//#define DEBUG_MODE
 
 /**************************************************************************//**
  * Application Init.

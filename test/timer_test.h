@@ -3,13 +3,10 @@
  * @brief     Header for timer.c unit test
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 3, 2025
+ * @date      Feb 13, 2025
  *
  * @resources
  *
- *
- * Editor: Feb 3, 2025 Hyounjun Chang
- * Change: Initial .h file definition
  *
  */
 
@@ -23,6 +20,6 @@
 void TEST_MODE_timerWaitUs_irq_LED_toggle(uint32_t us);
 void TEST_MODE_reset_timerwait_irq_state();
 
-void delayApprox(int delay);
+void delayApprox(volatile int delay);
 
 #endif /* TEST_TIMER_TEST_H_ */

@@ -18,8 +18,8 @@
  * Student edit: Add your name and email address here:
  * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
-   Editor: Jan 20, 2025 Hyounjun Chang
- * Change: updated GPIO assignment for LED0/LED1
+   Editor: Feb 13, 2025 Hyounjun Chang
+ * Change: updated GPIO assignment for SI7021, I2C
  */
 
 
@@ -35,7 +35,7 @@
 
 #include "gpio.h"
 #include "timer.h"
-
+#include "i2c.h"
 
 // Student Edit: Define these, 0's are placeholder values.
 //

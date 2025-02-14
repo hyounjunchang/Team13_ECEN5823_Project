@@ -3,9 +3,9 @@
  * @brief     I2C module for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 4, 2025
+ * @date      Feb 13, 2025
  *
- * @resources Lecture 6 Slides
+ * @resources Lecture 6 Slides, Lecture 8 Slides
  *
  *
  *
