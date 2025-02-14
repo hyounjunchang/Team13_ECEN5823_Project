@@ -42,7 +42,7 @@
 
 
 // global variables
-I2C_TransferReturn_TypeDef transferStatus; // make this global for IRQs in A4
+I2C_TransferSeq_TypeDef transferSequence; // global
 uint8_t cmd_data; // make this global for IRQs in A4
 uint8_t read_data[2]; // make this global for IRQs in A4
 
@@ -83,30 +83,21 @@ void SI7021_start_measure_temp(){
      sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
   }
 
-  I2C_TransferSeq_TypeDef transferSequence; // this one can be local
   // write command to sensor to read temperature data
   cmd_data = MEASURE_TEMP_NO_HOLD;
   transferSequence.addr = SI7021_ADDR << 1; // shift device address left
   transferSequence.flags = I2C_FLAG_WRITE;
   transferSequence.buf[0].data = &cmd_data; // pointer to data to write
   transferSequence.buf[0].len = sizeof(cmd_data);
+
+  I2C_TransferReturn_TypeDef transferStatus;
   transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-  //transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
   if (transferStatus < 0) {
-        LOG_ERROR("%d\r\n", transferStatus);
-   }
+    LOG_ERROR("%d\r\n", transferStatus);
+  }
 }
 
 void SI7021_wait_temp_sensor(){
-  //restore lowest EM mode
-  if (LOWEST_ENERGY_MODE == 2){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-  }
-  if (LOWEST_ENERGY_MODE == 3){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-
   timerWaitUs_irq(11000); // wait 11ms for sensor data
 }
 
@@ -121,29 +112,19 @@ void SI7021_start_read_sensor(){
   }
 
   // send Read command
-  I2C_TransferSeq_TypeDef transferSequence; // this one can be local
-
   transferSequence.addr = SI7021_ADDR << 1; // shift device address left
   transferSequence.flags = I2C_FLAG_READ;
-  transferSequence.buf[0].data = read_data; // pointer to data to write
-  transferSequence.buf[0].len = sizeof(read_data);
+  transferSequence.buf[0].data = getReadData_buf(); // pointer to data to write
+  transferSequence.buf[0].len = 2;
+
+  I2C_TransferReturn_TypeDef transferStatus;
   transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-  //transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
   if (transferStatus < 0) {
         LOG_ERROR("%d\r\n", transferStatus);
   }
 }
 
 uint16_t SI7021_read_measured_temp(){
-  //restore lowest EM mode
-  if (LOWEST_ENERGY_MODE == 2){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
-  }
-  if (LOWEST_ENERGY_MODE == 3){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-
   // SI7021 sends 2-byte data, MSB then LSB (big-endian)
   // uint16_t is little-endian, so you can't directly store to uint16_t
   // add values from 0
@@ -155,4 +136,8 @@ uint16_t SI7021_read_measured_temp(){
   int rounded_sensor_temp = (int)sensor_temp;
 
   return rounded_sensor_temp;
+}
+
+uint8_t* getReadData_buf(){
+  return &(read_data[0]);
 }

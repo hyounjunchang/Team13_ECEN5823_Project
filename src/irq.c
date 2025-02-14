@@ -46,6 +46,9 @@ https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/i2c/i2c/s
 // static variable, only for this scope
 static uint32_t letimer_uf_count = 0;
 
+// from i2c.c
+extern I2C_TransferReturn_TypeDef transferStatus;
+
 // check startup_efr32bg13p.c for list of IRQ Handlers
 // default is "weak" definition, for details, read https://stackoverflow.com/questions/51656838/attribute-weak-and-static-libraries
 // referenced from ECEN5823 isr_and_scheduler_issues.txt
@@ -96,20 +99,33 @@ uint32_t letimerMilliseconds(){
 }
 
 // From Lecture 8
-void I2C0_IRQHandler()
-{
-  LOG_INFO ("Current State: %d\r\n", get_SI7021_state());
+void I2C0_IRQHandler(void) {
+   LOG_INFO("Current State: %d\r\n", get_SI7021_state());
 
-  // check return value
+  /*
+   * see em_i2.c
+   * has access to global variables (transferSequence, cmd_data, read_data)
+   * which were sent to I2C_TransferInit()
+   */
   I2C_TransferReturn_TypeDef transferStatus;
   transferStatus = I2C_Transfer(I2C0);
   if (transferStatus == i2cTransferDone) {
+      // set event
       set_scheduler_event(EVENT_I2C_TRANSFER);
-  }
-  else if (transferStatus < 0) {
-      LOG_ERROR("%d\r\n", transferStatus);
-  }
 
-  // do nothing if transferStatus == i2cTransferInProgress
+      // Disable IRQ
+      NVIC_DisableIRQ(I2C0_IRQn);
 
-}
+      //restore lowest EM mode, since we are done with I2C_Transfer
+      if (LOWEST_ENERGY_MODE == 2){
+         sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+         sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM2);
+      }
+      if (LOWEST_ENERGY_MODE == 3){
+         sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM1);
+      }
+  }
+  if (transferStatus < 0) {
+      LOG_ERROR("%d", transferStatus);
+  }
+} // I2C0_IRQHandler()

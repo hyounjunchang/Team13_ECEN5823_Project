@@ -69,21 +69,23 @@ void set_scheduler_event(scheduler_event event){
   switch (event){
     case NO_EVENT:
       break;
-    case EVENT_LETIMER0_UF:
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-      active_events.flag_0 |= LETIMER0_UF_FLAG;
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-      break;
+    // prioritize I2C transfer event first
+    case EVENT_I2C_TRANSFER:
+         CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+         active_events.flag_0 |= I2C_TRANSFER_FLAG;
+         CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+         break;
     case EVENT_LETIMER0_COMP1:
       CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       active_events.flag_0 |= LETIMER0_COMP1_FLAG;
       CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
       break;
-    case EVENT_I2C_TRANSFER:
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-      active_events.flag_0 |= I2C_TRANSFER_FLAG;
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-      break;
+    case EVENT_LETIMER0_UF:
+          CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+          active_events.flag_0 |= LETIMER0_UF_FLAG;
+          CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+          break;
+
     default:
       break;
   }
@@ -100,6 +102,8 @@ void update_SI7021_state_machine(scheduler_event event){
     case SI7021_POWER_ON_RESET:
       if (event == EVENT_LETIMER0_COMP1){
           nextState_SI7021 = SI7021_I2C_INITIATE_SENSOR;
+          // since updated state has I2C transfer, enable IRQ
+          NVIC_EnableIRQ(I2C0_IRQn);
       }
       break;
     case SI7021_I2C_INITIATE_SENSOR:
@@ -110,6 +114,8 @@ void update_SI7021_state_machine(scheduler_event event){
     case SI7021_WAIT_SENSOR:
       if (event == EVENT_LETIMER0_COMP1){
           nextState_SI7021 = SI7021_I2C_READ_SENSOR;
+          // since updated state has I2C transfer, enable IRQ
+          NVIC_EnableIRQ(I2C0_IRQn);
       }
       break;
     case SI7021_I2C_READ_SENSOR:

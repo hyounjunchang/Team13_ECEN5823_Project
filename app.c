@@ -257,7 +257,6 @@ SL_WEAK void app_process_action(void)
             break;
           case SI7021_POWER_ON_RESET:
             gpioPowerOn_SI7021();
-            NVIC_EnableIRQ(I2C0_IRQn); // config NVIC to generate an IRQ for the I2C0 module.
             break;
           case SI7021_I2C_INITIATE_SENSOR:
             SI7021_start_measure_temp();
@@ -267,7 +266,6 @@ SL_WEAK void app_process_action(void)
             break;
           case SI7021_I2C_READ_SENSOR:
             SI7021_start_read_sensor();
-            NVIC_DisableIRQ(I2C0_IRQn);
             break;
           default:
             break;

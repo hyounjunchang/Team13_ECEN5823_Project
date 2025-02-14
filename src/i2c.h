@@ -26,4 +26,6 @@ void SI7021_wait_temp_sensor();
 void SI7021_start_read_sensor();
 uint16_t SI7021_read_measured_temp();
 
+uint8_t* getReadData_buf();
+
 #endif /* SRC_I2C_H_ */
