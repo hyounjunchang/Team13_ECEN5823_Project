@@ -47,4 +47,95 @@
       </properties>
     </characteristic>
   </service>
+
+  <!--Health Thermometer-->
+  <service advertise="true" id="health_thermometer_0" name="Health Thermometer" requirement="mandatory" sourceId="org.bluetooth.service.health_thermometer" type="primary" uuid="1809">
+    <informativeText>Abstract: The Health Thermometer service exposes temperature and other data from a thermometer intended for healthcare and fitness applications.
+Summary: The Health Thermometer service is instantiated as a Primary Service. There are one or more instantiations of the Health Thermometer service per device claiming conformance with this specification. </informativeText>
+
+    <!--Temperature Measurement-->
+    <characteristic const="false" id="temperature_measurement" name="Temperature Measurement" sourceId="org.bluetooth.characteristic.temperature_measurement" uuid="2A1C">
+      <informativeText>Abstract: 
+    The Temperature Measurement characteristic is a variable length structure containing a Flags field, a Temperature Measurement Value field and, based upon the contents of the Flags field, optionally a Time Stamp field and/or a Temperature Type field.            
+		
+Summary: 
+    The flags is the first field sent followed by the Temperature Measurement Value.            
+		
+Examples: 
+      If the value of bit 1 of the Flags field is 0 and bit 2 is 0, the structure of the Temperature Measurement characteristic consists of two fields in this order; Flags and Temperature Measurement Value.
+     
+      If the value of bit 1 of the Flags field is 1 (Time Stamp) and bit 2 is 0, the structure of the Temperature Measurement characteristic consists of three fields in this order: Flags, Temperature Measurement Value and Time Stamp.
+     
+      If the value of bit 1 of the Flags field is 1 and bit 2 is 1 (Time Stamp and Temperature Type), the structure of the Temperature Measurement characteristic consists of four fields in this order: Flags, Temperature Measurement Value, Time Stamp and Temperature Type.
+     
+      If the value of bit 1 of the Flags field is 0 and bit 2 is 1 (Temperature Type), the structure of the Temperature Measurement characteristic consists of three fields in this order: Flags, Temperature Measurement Value and Temperature Type.
+    </informativeText>
+      <value length="17" type="utf-8" variable_length="false">Chang</value>
+      <properties>
+        <indicate authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Temperature Type-->
+    <characteristic const="false" id="temperature_type" name="Temperature Type" sourceId="org.bluetooth.characteristic.temperature_type" uuid="2A1D">
+      <informativeText>Abstract: 
+    The Temperature Type characteristic is an enumeration that indicates where the temperature was measured.            
+		
+Summary: 
+    These Temperature Type values correspond to the Temperature Type descriptions used in ISO/IEEE 11073-10408-2008.            
+		</informativeText>
+      <value length="1" type="hex" variable_length="false"/>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Intermediate Temperature-->
+    <characteristic const="false" id="intermediate_temperature" name="Intermediate Temperature" sourceId="org.bluetooth.characteristic.intermediate_temperature" uuid="2A1E">
+      <informativeText>Abstract: 
+    The Intermediate Temperature characteristic has the same format as the Temperature Measurement characteristic. However, due to a different context, the Value field is referred to as the Intermediate Temperature Value field.            
+		</informativeText>
+      <value length="17" type="hex" variable_length="false"/>
+      <properties>
+        <notify authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Measurement Interval-->
+    <characteristic const="false" id="measurement_interval" name="Measurement Interval" sourceId="org.bluetooth.characteristic.measurement_interval" uuid="2A21">
+      <informativeText>Abstract: 
+    The Measurement Interval characteristic defines the time between measurements.            
+		
+Summary: 
+    This characteristic is capable of representing values from 1 second to 65535 seconds which is equal to 18 hours, 12 minutes and 15 seconds.            
+		</informativeText>
+      <value length="2" type="hex" variable_length="false"/>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+
+      <!--Valid Range-->
+      <descriptor const="false" discoverable="true" id="valid_range" name="Valid Range" sourceId="org.bluetooth.descriptor.valid_range" uuid="2906">
+        <informativeText>Abstract: 
+    The Characteristic Valid Range descriptor is used for defining the range of a characteristics. Two mandatory fields are contained (upper and lower bounds) which define the range.            
+		
+Summary: 
+    If the Characteristic Value to which this descriptor is attached has a fixed exponent, then the values in this descriptor have the same exponent.
+    The first value in the Valid Range descriptor represents the lower inclusive value of the range. The second value represents the higher inclusive value of the range.
+    The data type and units for lower inclusive value and the upper inclusive value are identical to the data type and units of the characteristic for which it is used.            
+		
+Examples: 
+When used with the Measurement Interval characteristic, the Valid Range descriptor is formatted using a uint16. If the valid range has a Minimum Value of 10 minutes (600 seconds) and a Maximum Value of 2 hours (7200 seconds) the value of the Valid Range descriptor would be expressed as: 0x58 0x02 0x20 0x1C
+             
+      A characteristic that is formatted using a nibble with a fixed decimal-exponent that has a Valid Range of 2 to 13 has a Valid Range descriptor defined as: 0x02 0x0D
+             
+      A characteristic value that is formatted using an sint16 with a fixed exponent of -1 that has a Valid Range of -40 to +85 is expressed as: 0x70 0xFE 0x52 0x03
+            </informativeText>
+        <properties>
+          <read authenticated="false" bonded="false" encrypted="false"/>
+        </properties>
+        <value length="1" type="hex" variable_length="false"/>
+      </descriptor>
+    </characteristic>
+  </service>
 </gatt>

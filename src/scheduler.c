@@ -132,3 +132,7 @@ void update_SI7021_state_machine(scheduler_event event){
 SI7021_state get_SI7021_state(){
   return currState_SI7021;
 }
+
+void temperature_state_machine(sl_bt_msg_t* evt){
+
+}

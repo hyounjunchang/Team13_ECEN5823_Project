@@ -239,6 +239,7 @@ SL_WEAK void app_process_action(void)
   //         We will create/use a scheme that is far more energy efficient in
   //         later assignments.
 
+  /*
   #ifdef TEST_MODE
     //TEST_MODE_timerWaitUs_polled_LED_blink(1000000);
     TEST_MODE_timerWaitUs_irq_LED_toggle(2000000);
@@ -273,6 +274,8 @@ SL_WEAK void app_process_action(void)
         curr_event = getNextEvent();
       }
   #endif
+  */
+
 } // app_process_action()
 
 
@@ -292,17 +295,15 @@ SL_WEAK void app_process_action(void)
 void sl_bt_on_event(sl_bt_msg_t *evt)
 {
 
-  // Just a trick to hide a compiler warning about unused input parameter evt.
-  (void) evt;
 
   // For A5 onward:
   // Some events require responses from our application code,
   // and don’t necessarily advance our state machines.
   // For A5 uncomment the next 2 function calls
-  // handle_ble_event(evt); // put this code in ble.c/.h
+  handle_ble_event(evt); // put this code in ble.c/.h
 
   // sequence through states driven by events
-  // state_machine(evt);    // put this code in scheduler.c/.h
+  temperature_state_machine(evt);    // put this code in scheduler.c/.h
 
 
 } // sl_bt_on_event()

@@ -9,7 +9,7 @@
     <properties key="projectCommon.toolchainId" value="com.silabs.ss.tool.ide.arm.toolchain.gnu.cdt:10.2.1.20201103"/>
     <properties key="universalConfig.projectTypeIds" value="com.silabs.ss.framework.ide.project.core.cdtMbsProjectType"/>
     <properties key="projectCommon.importModeId" value="COPY"/>
-    <properties key="universalConfig.relativeWorkspacePath" value="..\ecen5823-assignment4-hyounjunchang.slcw"/>
+    <properties key="universalConfig.relativeWorkspacePath" value="..\ecen5823-assignment5-hyounjunchang.slcw"/>
     <properties key="projectCommon.overwriteCopiedSources" value="false"/>
     <properties key="universalConfig.compSelProjInstanceId" value="1737191292778"/>
   </descriptors>

@@ -14,6 +14,8 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include "ble.h"
+
 // defined events
 // there are not the bit-fields
 typedef enum{
@@ -41,5 +43,8 @@ void set_scheduler_event(scheduler_event event);
 // for SI7021 state machine
 void update_SI7021_state_machine(scheduler_event event);
 SI7021_state get_SI7021_state();
+
+// bluetooth state machine
+void temperature_state_machine(sl_bt_msg_t* evt);
 
 #endif
