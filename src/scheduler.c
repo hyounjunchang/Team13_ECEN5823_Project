@@ -18,6 +18,11 @@
 #include "gpio.h"
 #include "i2c.h"
 
+// for ble status
+#include "ble.h"
+
+#include "autogen/gatt_db.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -29,6 +34,14 @@
 #define BLE_I2C_TRANSFER_FLAG 0x4
 
 static SI7021_state currState_SI7021 = SI7021_IDLE;
+
+uint8_t htm_temperature_buffer[5];
+uint8_t *p = &htm_temperature_buffer[0];
+uint32_t htm_temperature_flt;
+uint8_t flags = 0x00;
+
+uint16_t last_temperature = 0;
+
 
 // edited from Lecture 6 slides
 // returns a scheduler_event among one of the events available
@@ -71,26 +84,33 @@ scheduler_event getNextEvent(){
 void set_scheduler_event(scheduler_event event){
   sl_status_t sc;
 
+  CORE_DECLARE_IRQ_STATE;
   switch (event){
     case NO_EVENT:
       break;
     // prioritize I2C transfer event first
     case EVENT_I2C_TRANSFER:
+     CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
      sc = sl_bt_external_signal(BLE_I2C_TRANSFER_FLAG);
+     CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
      if (sc != SL_STATUS_OK){
-         LOG_ERROR("Error setting BLE_I2C_TRANSFER_FLAG\r\n");
+         LOG_ERROR("Error setting BLE_I2C_TRANSFER_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
      }
      break;
     case EVENT_LETIMER0_COMP1:
+      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       sc = sl_bt_external_signal(BLE_LETIMER0_COMP1_FLAG);
+      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
       if (sc != SL_STATUS_OK){
-          LOG_ERROR("Error setting BLE_LETIMER0_COMP1_FLAG\r\n");
+          LOG_ERROR("Error setting BLE_LETIMER0_COMP1_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
     case EVENT_LETIMER0_UF:
+      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
       sc = sl_bt_external_signal(BLE_LETIMER0_UF_FLAG);
+      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
       if (sc != SL_STATUS_OK){
-          LOG_ERROR("Error setting BLE_LETIMER0_UF_FLAG\r\n");
+          LOG_ERROR("Error setting BLE_LETIMER0_UF_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
     default:
@@ -104,20 +124,19 @@ SI7021_state get_SI7021_state(){
 
 void temperature_state_machine(sl_bt_msg_t* evt){
   // only update on external signal (non-bluetooth)
-
-
-  // sl_bt_evt_system_external_signal_id DOESN'T TRIGGER THIS!!!
-  if (evt->header != 0x30104a0){
+  if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
       return;
   }
 
   uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
 
-  LOG_INFO("curr state: %i\r\n", currState_SI7021);
+  ble_data_struct_t* ble_data_ptr = get_ble_data();
+  bool ble_connection_alive = ble_data_ptr->connection_alive;
+  sl_status_t sc;
 
   switch(currState_SI7021){
     case SI7021_IDLE:
-      if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
+      if ((ble_event_flags & BLE_LETIMER0_UF_FLAG) && ble_connection_alive) {
           // take action and update state
           gpioPowerOn_SI7021();
           currState_SI7021 = SI7021_WAIT_POWER_UP;
@@ -151,8 +170,47 @@ void temperature_state_machine(sl_bt_msg_t* evt){
     case SI7021_WAIT_I2C_READ_COMPLETE:
       if (ble_event_flags & BLE_I2C_TRANSFER_FLAG){
           // take action and update state
-          uint16_t temperature = SI7021_read_measured_temp();
-          LOG_INFO("Read temperature %iC\r\n", temperature);
+          if (ble_connection_alive){
+            // read temperature
+            uint16_t curr_temperature = SI7021_read_measured_temp();
+            //LOG_INFO("Read temperature %iC\r\n", curr_temperature);
+
+            // convert temperature for bluetooth
+            UINT8_TO_BITSTREAM(p, flags); // insert the flags byte
+            htm_temperature_flt = INT32_TO_FLOAT(curr_temperature*1000, -3);
+            // insert the temperature measurement
+            UINT32_TO_BITSTREAM(p, htm_temperature_flt);
+
+            // write to gatt_db
+            sc = sl_bt_gatt_server_write_attribute_value(
+                  gattdb_temperature_measurement, // handle from gatt_db.h
+                  0, // offset
+                  5, // length
+                  &htm_temperature_buffer[0] // in IEEE-11073 format
+            );
+            if (sc != SL_STATUS_OK) {
+                LOG_ERROR("Error setting GATT for temp measurement, Error Code: 0x%x\r\n", (uint16_t)sc);
+            }
+            // send indication only if value is different
+            if (last_temperature != curr_temperature /*&&
+                ble_data_ptr->indication_temp_meas*/) {
+                last_temperature = curr_temperature;
+
+                sc = sl_bt_gatt_server_send_indication(
+                  ble_data_ptr->connectionHandle,
+                  gattdb_temperature_measurement, // handle from gatt_db.h
+                  5,
+                  &htm_temperature_buffer[0] // in IEEE-11073 format
+                );
+                if (sc != SL_STATUS_OK) {
+                    LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
+                }
+                else {
+                    //Set indication_in_flight flag
+                    ble_data_ptr->indication_in_flight = true;
+                }
+            } // if
+          }
           gpioPowerOff_SI7021();
           currState_SI7021 = SI7021_IDLE;
       }

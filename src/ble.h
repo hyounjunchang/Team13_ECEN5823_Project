@@ -15,6 +15,7 @@
 #define GECKO_BLE_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "sl_bluetooth.h"
 
 #define UINT8_TO_BITSTREAM(p, n)  { *(p)++ = (uint8_t)(n); }
@@ -31,9 +32,17 @@
 typedef struct {
   // values that are common to servers and clients
   bd_addr myAddress;
+  uint8_t myAddressType;
+
   // values unique for server
   // The advertising set handle allocated from Bluetooth stack.
   uint8_t advertisingSetHandle;
+  uint8_t connectionHandle;
+  bool connection_alive;
+
+  bool indication_temp_meas;
+  bool indication_in_flight;
+
   // values unique for client
 } ble_data_struct_t;
 

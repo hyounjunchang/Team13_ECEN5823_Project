@@ -14,7 +14,7 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include "ble.h"
+#include "sl_bt_api.h"
 
 // defined events
 // there are not the bit-fields
