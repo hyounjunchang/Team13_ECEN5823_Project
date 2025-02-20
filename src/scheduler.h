@@ -26,25 +26,24 @@ typedef enum{
 } scheduler_event;
 
 typedef enum{
-  SI7021_READ_TEMP_POWER_OFF,
-  SI7021_POWER_ON_RESET,
-  SI7021_I2C_INITIATE_SENSOR,
-  SI7021_WAIT_SENSOR,
-  SI7021_I2C_READ_SENSOR
+  SI7021_IDLE,
+  SI7021_WAIT_POWER_UP,
+  SI7021_WAIT_I2C_WRITE,
+  SI7021_WAIT_I2C_READ_START,
+  SI7021_WAIT_I2C_READ_COMPLETE
 } SI7021_state;
 
 
 // for use in app.c
-scheduler_event getNextEvent();
+// scheduler_event getNextEvent();
 
 // for use by IRQ
 void set_scheduler_event(scheduler_event event);
 
 // for SI7021 state machine
-void update_SI7021_state_machine(scheduler_event event);
 SI7021_state get_SI7021_state();
 
-// bluetooth state machine
+// temp state machine using ble event
 void temperature_state_machine(sl_bt_msg_t* evt);
 
 #endif
