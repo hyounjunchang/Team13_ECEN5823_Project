@@ -46,4 +46,7 @@ SI7021_state get_SI7021_state();
 // temp state machine using ble event
 void temperature_state_machine(sl_bt_msg_t* evt);
 
+
+uint8_t* get_htm_temperature_buffer_ptr();
+
 #endif

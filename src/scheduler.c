@@ -40,7 +40,9 @@ uint8_t *p = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
 
-uint16_t last_temperature = 0;
+uint8_t* get_htm_temperature_buffer_ptr(){
+  return p;
+}
 
 
 // edited from Lecture 6 slides
@@ -136,7 +138,8 @@ void temperature_state_machine(sl_bt_msg_t* evt){
 
   switch(currState_SI7021){
     case SI7021_IDLE:
-      if ((ble_event_flags & BLE_LETIMER0_UF_FLAG) && ble_connection_alive) {
+      if ((ble_event_flags & BLE_LETIMER0_UF_FLAG) && ble_connection_alive &&
+          ble_data_ptr->ok_to_send_htm_indications) {
           // take action and update state
           gpioPowerOn_SI7021();
           currState_SI7021 = SI7021_WAIT_POWER_UP;
@@ -191,11 +194,8 @@ void temperature_state_machine(sl_bt_msg_t* evt){
             if (sc != SL_STATUS_OK) {
                 LOG_ERROR("Error setting GATT for temp measurement, Error Code: 0x%x\r\n", (uint16_t)sc);
             }
-            // send indication only if value is different
-            if (last_temperature != curr_temperature /*&&
-                ble_data_ptr->indication_temp_meas*/) {
-                last_temperature = curr_temperature;
-
+            // send indication
+            if (ble_data_ptr->ok_to_send_htm_indications) {
                 sc = sl_bt_gatt_server_send_indication(
                   ble_data_ptr->connectionHandle,
                   gattdb_temperature_measurement, // handle from gatt_db.h
@@ -208,6 +208,7 @@ void temperature_state_machine(sl_bt_msg_t* evt){
                 else {
                     //Set indication_in_flight flag
                     ble_data_ptr->indication_in_flight = true;
+                    //LOG_INFO("indication in flight\r\n");
                 }
             } // if
           }

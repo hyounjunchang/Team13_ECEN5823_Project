@@ -15,6 +15,8 @@
 #include "sl_bluetooth.h"
 #include "gatt_db.h"
 
+#include "scheduler.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -35,14 +37,14 @@
 #define SLAVE_LATENCY_INTERVALS (SLAVE_LATENCY_MS_VAL / CONN_INTERVAL_MS_VAL) - 1
 
 #define SUPERVISION_TIMEOUT_MS_VAL (1 + SLAVE_LATENCY_INTERVALS) * (CONN_INTERVAL_MS_VAL * 2)
-#define SUPERVISION_TIMEOUT SUPERVISION_TIMEOUT_MS_VAL / 10
+#define SUPERVISION_TIMEOUT (SUPERVISION_TIMEOUT_MS_VAL / 10) + 1 // +1 to meet supervision req
 
 // BLE private data
 ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .advertisingSetHandle = 0, .connectionHandle = 0,
                               .connection_alive = false,
-                              .indication_temp_meas = false,
-                              .indication_in_flight = false}; // initialize with all zeros
+                              .ok_to_send_htm_indications = false,
+                              .indication_in_flight = false};
 
 // add states for advertising, scanning, measuring temp data, etcs
 
@@ -55,6 +57,13 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
   sl_status_t sc;
   sl_bt_evt_connection_opened_t bt_conn_open;
+  sl_bt_evt_connection_parameters_t bt_conn_param;
+
+  // for updating
+  sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
+  uint16_t characteristic;
+  uint16_t client_config_flags;
+  uint16_t client_config_handle;
 
   switch (SL_BT_MSG_ID(evt->header)) {
     // ******************************************************
@@ -95,6 +104,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
       }
       break;
     case sl_bt_evt_connection_opened_id:
+      LOG_INFO("connection request incoming\r\n");
+
       bt_conn_open = evt->data.evt_connection_opened;
 
       // handle open event
@@ -103,23 +114,27 @@ void handle_ble_event(sl_bt_msg_t* evt){
          LOG_ERROR("Error stopping Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
 
-      // UPDATE LATER!
+
+      // request sl_bt_connection parameter
       sc = sl_bt_connection_set_parameters(bt_conn_open.connection,
                                            CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL),
                                            CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL),
                                            SLAVE_LATENCY_INTERVALS,
                                            SUPERVISION_TIMEOUT,
                                            0, // default for connection event min/maxlength
-                                           0
+                                           0xffff
                                            );
       if (sc != SL_STATUS_OK){
-         LOG_ERROR("Error setting Bluetooth connection parameters, Error code: 0x%x\r\n", (uint16_t)sc);
+         LOG_ERROR("Error requesting Bluetooth connection parameters, Error code: 0x%x\r\n", (uint16_t)sc);
       }
+
 
       ble_data.connectionHandle = bt_conn_open.connection;
       ble_data.connection_alive = true;
       break;
     case sl_bt_evt_connection_closed_id:
+      LOG_INFO("Connection closed\r\n");
+
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
                                                  sl_bt_advertiser_general_discoverable);
@@ -133,22 +148,90 @@ void handle_ble_event(sl_bt_msg_t* evt){
          LOG_ERROR("Error starting Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
 
+      // update states
+      ble_data.ok_to_send_htm_indications = 0;
+      ble_data.indication_in_flight = false;
       ble_data.connection_alive = false;
       break;
     case sl_bt_evt_connection_parameters_id:
+      bt_conn_param = evt->data.evt_connection_parameters;
+      LOG_INFO("Connection parameter changed\r\n");
+      LOG_INFO("Interval(1.25ms): %d\r\n", bt_conn_param.interval);
+      LOG_INFO("Latency(num_skip_allowed): %d\r\n", bt_conn_param.latency);
+      LOG_INFO("Timeout(10ms): %d\r\n", bt_conn_param.timeout);
       break;
     case sl_bt_evt_system_external_signal_id:
       break;
     // ******************************************************
     // Events for Server
     // ******************************************************
+    // Indicates either: A local Client Characteristic Configuration descriptor (CCCD)
+    // was changed by the remote GATT client, or
+    // That a confirmation from the remote GATT Client was received upon a successful
+    // reception of the indication I.e. we sent an indication from our server to the
+    // client with sl_bt_gatt_server_send_indication()
     case sl_bt_evt_gatt_server_characteristic_status_id:
+      // data received
+      gatt_server_char_status = evt->data.evt_gatt_server_characteristic_status;
+
+      // config flag to be used for CCCD change
+      characteristic = gatt_server_char_status.characteristic;
+
+      //client_config_flags = gatt_server_char_status.client_config_flags;
+      //client_config_handle = gatt_server_char_status.client_config;
+
+      //LOG_INFO("Char_status received, characteristic %x\r\n", characteristic);
+      //LOG_INFO("Char_status received, client_config_handle %x\r\n", client_config_handle);
+      //LOG_INFO("Char_status received, client_config_flags %x\r\n", client_config_flags);
+
+      // CCCD changed
+      if(gatt_server_char_status.status_flags & sl_bt_gatt_server_client_config){
+          if (characteristic == gattdb_temperature_measurement){ // handle from gatt_db.h
+
+              // indication flag
+              if (gatt_server_char_status.client_config_flags & sl_bt_gatt_indication){
+                ble_data.ok_to_send_htm_indications = true;
+              }
+              else{
+                ble_data.ok_to_send_htm_indications = false;
+              }
+
+              LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);
+          }
+      }
+      // GATT indication received
+      if(gatt_server_char_status.status_flags & sl_bt_gatt_server_confirmation){
+          ble_data.indication_in_flight = false;
+      }
 
       break;
     // Indicates confirmation from the remote GATT client has not been
     // received within 30 seconds after an indication was sent
     case sl_bt_evt_gatt_server_indication_timeout_id:
-      ble_data.indication_in_flight = true;
+      // resend data
+      LOG_INFO("Received Indication Timeout\r\n");
+
+      uint8_t* buff_ptr = get_htm_temperature_buffer_ptr();
+
+      // send indication
+      if (ble_data.ok_to_send_htm_indications) {
+          sc = sl_bt_gatt_server_send_indication(
+            ble_data.connectionHandle,
+            gattdb_temperature_measurement, // handle from gatt_db.h
+            5,
+            buff_ptr // in IEEE-11073 format
+          );
+          if (sc != SL_STATUS_OK) {
+              LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
+              ble_data.indication_in_flight = false;
+          }
+          else{
+              ble_data.indication_in_flight = true;
+          }
+      }
+
+
+
       break;
     // ******************************************************
     // Events for Client

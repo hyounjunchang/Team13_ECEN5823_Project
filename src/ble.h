@@ -40,7 +40,7 @@ typedef struct {
   uint8_t connectionHandle;
   bool connection_alive;
 
-  bool indication_temp_meas;
+  bool ok_to_send_htm_indications;
   bool indication_in_flight;
 
   // values unique for client
