@@ -3,7 +3,7 @@
  * @brief     BLE module for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 19, 2025
+ * @date      Feb 20, 2025
  *
  * @resources Lecture 10
  *
@@ -52,6 +52,7 @@ uint8_t *p = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
 
+// Referenced from Lecture 10 slides
 void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c){
    sl_status_t sc;
 
@@ -116,6 +117,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
     // Do not call any stack API commands before receiving this boot event!
     // Including starting BT stack soft timers!
     // --------------------------------------------------------
+
+    // Indicates that the device has started and the radio is ready
     case sl_bt_evt_system_boot_id:
       // handle boot event
       sc = sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);
@@ -145,6 +148,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
           LOG_ERROR("Error starting Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
+    // Indicates that a new connection was opened
     case sl_bt_evt_connection_opened_id:
       bt_conn_open = evt->data.evt_connection_opened;
 
@@ -172,6 +176,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.connectionHandle = bt_conn_open.connection;
       ble_data.connection_alive = true;
       break;
+    // sl_bt_evt_connection_closed_id
     case sl_bt_evt_connection_closed_id:
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
@@ -191,6 +196,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.indication_in_flight = false;
       ble_data.connection_alive = false;
       break;
+    // Triggered whenever the connection parameters are changed and at any
+    // time a connection is established
     case sl_bt_evt_connection_parameters_id:
       // Uncomment to log connection parameters
       /*
@@ -202,6 +209,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       */
       break;
     case sl_bt_evt_system_external_signal_id:
+      // si7021 state is kept in scheduler.c, so no action is taken here.
       break;
     // ******************************************************
     // Events for Server
@@ -236,8 +244,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
       // GATT indication received
       if(gatt_server_char_status.status_flags & sl_bt_gatt_server_confirmation){
           ble_data.indication_in_flight = false;
+          //LOG_INFO("GATT indication received\r\n");
       }
-
       break;
     // Indicates confirmation from the remote GATT client has not been
     // received within 30 seconds after an indication was sent
