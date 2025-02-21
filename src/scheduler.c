@@ -35,15 +35,6 @@
 
 static SI7021_state currState_SI7021 = SI7021_IDLE;
 
-uint8_t htm_temperature_buffer[5];
-uint8_t *p = &htm_temperature_buffer[0];
-uint32_t htm_temperature_flt;
-uint8_t flags = 0x00;
-
-uint8_t* get_htm_temperature_buffer_ptr(){
-  return p;
-}
-
 
 // edited from Lecture 6 slides
 // returns a scheduler_event among one of the events available
@@ -134,7 +125,6 @@ void temperature_state_machine(sl_bt_msg_t* evt){
 
   ble_data_struct_t* ble_data_ptr = get_ble_data();
   bool ble_connection_alive = ble_data_ptr->connection_alive;
-  sl_status_t sc;
 
   switch(currState_SI7021){
     case SI7021_IDLE:
@@ -177,40 +167,7 @@ void temperature_state_machine(sl_bt_msg_t* evt){
             // read temperature
             uint16_t curr_temperature = SI7021_read_measured_temp();
             //LOG_INFO("Read temperature %iC\r\n", curr_temperature);
-
-            // convert temperature for bluetooth
-            UINT8_TO_BITSTREAM(p, flags); // insert the flags byte
-            htm_temperature_flt = INT32_TO_FLOAT(curr_temperature*1000, -3);
-            // insert the temperature measurement
-            UINT32_TO_BITSTREAM(p, htm_temperature_flt);
-
-            // write to gatt_db
-            sc = sl_bt_gatt_server_write_attribute_value(
-                  gattdb_temperature_measurement, // handle from gatt_db.h
-                  0, // offset
-                  5, // length
-                  &htm_temperature_buffer[0] // in IEEE-11073 format
-            );
-            if (sc != SL_STATUS_OK) {
-                LOG_ERROR("Error setting GATT for temp measurement, Error Code: 0x%x\r\n", (uint16_t)sc);
-            }
-            // send indication
-            if (ble_data_ptr->ok_to_send_htm_indications) {
-                sc = sl_bt_gatt_server_send_indication(
-                  ble_data_ptr->connectionHandle,
-                  gattdb_temperature_measurement, // handle from gatt_db.h
-                  5,
-                  &htm_temperature_buffer[0] // in IEEE-11073 format
-                );
-                if (sc != SL_STATUS_OK) {
-                    LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
-                }
-                else {
-                    //Set indication_in_flight flag
-                    ble_data_ptr->indication_in_flight = true;
-                    //LOG_INFO("indication in flight\r\n");
-                }
-            } // if
+            update_temp_meas_gatt_and_send_indication(curr_temperature);
           }
           gpioPowerOff_SI7021();
           currState_SI7021 = SI7021_IDLE;

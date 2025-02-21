@@ -46,7 +46,56 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .ok_to_send_htm_indications = false,
                               .indication_in_flight = false};
 
-// add states for advertising, scanning, measuring temp data, etcs
+// buffer for sending values
+uint8_t htm_temperature_buffer[5];
+uint8_t *p = &htm_temperature_buffer[0];
+uint32_t htm_temperature_flt;
+uint8_t flags = 0x00;
+
+uint8_t* get_htm_temperature_buffer_ptr(){
+  return p;
+}
+
+
+void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c){
+   sl_status_t sc;
+
+  // convert temperature for bluetooth
+   UINT8_TO_BITSTREAM(p, flags); // insert the flags byte
+   htm_temperature_flt = INT32_TO_FLOAT(temp_in_c*1000, -3);
+   // insert the temperature measurement
+   UINT32_TO_BITSTREAM(p, htm_temperature_flt);
+
+   // write to gatt_db
+   sc = sl_bt_gatt_server_write_attribute_value(
+         gattdb_temperature_measurement, // handle from gatt_db.h
+         0, // offset
+         5, // length
+         &htm_temperature_buffer[0] // in IEEE-11073 format
+   );
+   if (sc != SL_STATUS_OK) {
+       LOG_ERROR("Error setting GATT for temp measurement, Error Code: 0x%x\r\n", (uint16_t)sc);
+   }
+   // send indication
+   if (ble_data.ok_to_send_htm_indications) {
+       sc = sl_bt_gatt_server_send_indication(
+         ble_data.connectionHandle,
+         gattdb_temperature_measurement, // handle from gatt_db.h
+         5,
+         &htm_temperature_buffer[0] // in IEEE-11073 format
+       );
+       if (sc != SL_STATUS_OK) {
+           LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
+           ble_data.indication_in_flight = false;
+       }
+       else {
+           //Set indication_in_flight flag
+           ble_data.indication_in_flight = true;
+           //LOG_INFO("indication in flight\r\n");
+       }
+   }
+}
+
 
 ble_data_struct_t* get_ble_data(){
   return &ble_data;
@@ -62,8 +111,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
   // for updating
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
   uint16_t characteristic;
-  uint16_t client_config_flags;
-  uint16_t client_config_handle;
 
   switch (SL_BT_MSG_ID(evt->header)) {
     // ******************************************************

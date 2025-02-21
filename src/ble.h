@@ -38,8 +38,9 @@ typedef struct {
   // The advertising set handle allocated from Bluetooth stack.
   uint8_t advertisingSetHandle;
   uint8_t connectionHandle;
-  bool connection_alive;
 
+  // states
+  bool connection_alive;
   bool ok_to_send_htm_indications;
   bool indication_in_flight;
 
@@ -48,6 +49,9 @@ typedef struct {
 
 // ble functions
 ble_data_struct_t* get_ble_data();
+
+// update gatt and send indicator
+void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c);
 
 void handle_ble_event(sl_bt_msg_t* evt);
 
