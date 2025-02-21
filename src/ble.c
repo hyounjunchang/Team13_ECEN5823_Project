@@ -52,11 +52,6 @@ uint8_t *p = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
 
-uint8_t* get_htm_temperature_buffer_ptr(){
-  return p;
-}
-
-
 void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c){
    sl_status_t sc;
 
@@ -106,7 +101,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
   sl_status_t sc;
   sl_bt_evt_connection_opened_t bt_conn_open;
-  sl_bt_evt_connection_parameters_t bt_conn_param;
+  //sl_bt_evt_connection_parameters_t bt_conn_param;
 
   // for updating
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
@@ -151,8 +146,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       }
       break;
     case sl_bt_evt_connection_opened_id:
-      LOG_INFO("connection request incoming\r\n");
-
       bt_conn_open = evt->data.evt_connection_opened;
 
       // handle open event
@@ -180,8 +173,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.connection_alive = true;
       break;
     case sl_bt_evt_connection_closed_id:
-      LOG_INFO("Connection closed\r\n");
-
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
                                                  sl_bt_advertiser_general_discoverable);
@@ -201,11 +192,14 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.connection_alive = false;
       break;
     case sl_bt_evt_connection_parameters_id:
+      // Uncomment to log connection parameters
+      /*
       bt_conn_param = evt->data.evt_connection_parameters;
       LOG_INFO("Connection parameter changed\r\n");
       LOG_INFO("Interval(1.25ms): %d\r\n", bt_conn_param.interval);
       LOG_INFO("Latency(num_skip_allowed): %d\r\n", bt_conn_param.latency);
       LOG_INFO("Timeout(10ms): %d\r\n", bt_conn_param.timeout);
+      */
       break;
     case sl_bt_evt_system_external_signal_id:
       break;
@@ -221,15 +215,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
       // data received
       gatt_server_char_status = evt->data.evt_gatt_server_characteristic_status;
 
-      // config flag to be used for CCCD change
+      // characteristic for CCCD change
       characteristic = gatt_server_char_status.characteristic;
-
-      //client_config_flags = gatt_server_char_status.client_config_flags;
-      //client_config_handle = gatt_server_char_status.client_config;
-
-      //LOG_INFO("Char_status received, characteristic %x\r\n", characteristic);
-      //LOG_INFO("Char_status received, client_config_handle %x\r\n", client_config_handle);
-      //LOG_INFO("Char_status received, client_config_flags %x\r\n", client_config_flags);
 
       // CCCD changed
       if(gatt_server_char_status.status_flags & sl_bt_gatt_server_client_config){
@@ -243,7 +230,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
                 ble_data.ok_to_send_htm_indications = false;
               }
 
-              LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);
+              //LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);
           }
       }
       // GATT indication received
@@ -255,18 +242,14 @@ void handle_ble_event(sl_bt_msg_t* evt){
     // Indicates confirmation from the remote GATT client has not been
     // received within 30 seconds after an indication was sent
     case sl_bt_evt_gatt_server_indication_timeout_id:
-      // resend data
-      LOG_INFO("Received Indication Timeout\r\n");
-
-      uint8_t* buff_ptr = get_htm_temperature_buffer_ptr();
-
+      // LOG_INFO("Received Indication Timeout\r\n");
       // send indication
       if (ble_data.ok_to_send_htm_indications) {
           sc = sl_bt_gatt_server_send_indication(
             ble_data.connectionHandle,
             gattdb_temperature_measurement, // handle from gatt_db.h
             5,
-            buff_ptr // in IEEE-11073 format
+            p // in IEEE-11073 format
           );
           if (sc != SL_STATUS_OK) {
               LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
@@ -276,9 +259,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
               ble_data.indication_in_flight = true;
           }
       }
-
-
-
       break;
     // ******************************************************
     // Events for Client
