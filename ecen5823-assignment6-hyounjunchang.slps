@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <model:MDescriptors xmlns:model="http://www.silabs.com/ss/Studio.ecore">
-  <descriptors name="ecen5823-assignment5-hyounjunchang">
+  <descriptors name="ecen5823-assignment6-hyounjunchang">
     <properties key="projectCommon.sdkId" value="com.silabs.sdk.stack.super:4.3.2._1951418590"/>
     <properties key="universalConfig.generationDirectory" value=""/>
     <properties key="universalConfig.toolchainCompatibility" value="iar gcc"/>
