@@ -165,7 +165,7 @@ void temperature_state_machine(sl_bt_msg_t* evt){
           // take action and update state
           if (ble_connection_alive){
             // read temperature
-            uint16_t curr_temperature = SI7021_read_measured_temp();
+            int curr_temperature = SI7021_read_measured_temp();
             //LOG_INFO("Read temperature %iC\r\n", curr_temperature);
             update_temp_meas_gatt_and_send_indication(curr_temperature);
           }

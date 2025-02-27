@@ -260,10 +260,9 @@ void displayInit()
     //           Create that function in gpio.c/.h Then add that function call here.
     //
 
-    gpioPowerOn_SI7021(); // we need SENSOR_ENABLE=1 which is tied to DISP_ENABLE
+    gpioSensorEnSetOn(); // we need SENSOR_ENABLE=1 which is tied to DISP_ENABLE
     //                     // for the LCD, on all the time now
 
-    // If we call gpioPowerOff_SI7021, display will go off...
 
 
 

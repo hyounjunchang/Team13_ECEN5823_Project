@@ -24,7 +24,7 @@ float SI7021_convert_temp(uint16_t temp_code);
 void SI7021_start_measure_temp();
 void SI7021_wait_temp_sensor();
 void SI7021_start_read_sensor();
-uint16_t SI7021_read_measured_temp();
+int SI7021_read_measured_temp();
 
 uint8_t* getReadData_buf();
 

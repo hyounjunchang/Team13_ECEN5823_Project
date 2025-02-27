@@ -51,7 +51,7 @@ typedef struct {
 ble_data_struct_t* get_ble_data();
 
 // update gatt and send indicator
-void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c);
+void update_temp_meas_gatt_and_send_indication(int temp_in_c);
 
 void handle_ble_event(sl_bt_msg_t* evt);
 

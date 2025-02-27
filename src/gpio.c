@@ -61,6 +61,8 @@
 #define DISP_EXTCOMIN_PORT gpioPortD
 #define DISP_EXTCOMIN_PIN 13
 
+#define DISP_ENABLE_PORT gpioPortD
+#define DISP_ENABLE_PIN 15
 
 // called during boot_up in app.c
 void gpioInit()
@@ -124,8 +126,10 @@ void gpioPowerOff_SI7021(){
   GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SCL_PIN, gpioModeDisabled, 1);
   GPIO_PinModeSet(SI7021_I2C_PORT, SI7021_SDA_PIN, gpioModeDisabled, 1);
 
+  /* do not turn off ENABLE_PIN since LCD also connected to same pin
   // 1- Set GPIO pin to power-off the device, i.e. set to 0 (SENSOR_ENABLE), don’t disable the GPIO!
   GPIO_PinOutClear(SI7021_ENABLE_PORT, SI7021_ENABLE_PIN);
+  */
 }
 
 void gpioLed0SetOn()
@@ -161,6 +165,11 @@ void gpioSetDisplayExtcomin(bool extcomin){
   else{
       GPIO_PinOutClear(DISP_EXTCOMIN_PORT, DISP_EXTCOMIN_PIN);
   }
+}
+
+void gpioSensorEnSetOn(){
+  GPIO_PinModeSet(DISP_ENABLE_PORT, DISP_ENABLE_PIN, gpioModePushPull, 1); // push-pull
+  GPIO_PinOutSet(DISP_ENABLE_PORT, DISP_ENABLE_PIN);
 }
 
 

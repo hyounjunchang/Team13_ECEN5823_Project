@@ -32,14 +32,6 @@
 #define CONNECTION_INTERVAL(x) (x * 4) / 5
 #define CONN_INTERVAL_MS_VAL 75
 
-
-// 75ms latency, so slave latency = (4 - 1) intervals can be skipped
-#define SLAVE_LATENCY_MS_VAL 300
-#define SLAVE_LATENCY_INTERVALS (SLAVE_LATENCY_MS_VAL / CONN_INTERVAL_MS_VAL) - 1
-
-#define SUPERVISION_TIMEOUT_MS_VAL (1 + SLAVE_LATENCY_INTERVALS) * (CONN_INTERVAL_MS_VAL * 2)
-#define SUPERVISION_TIMEOUT (SUPERVISION_TIMEOUT_MS_VAL / 10) + 1 // +1 to meet supervision req
-
 // BLE private data
 ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .advertisingSetHandle = 0, .connectionHandle = 0,
@@ -53,8 +45,10 @@ uint8_t *p = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
 
+int latest_temp = 0;
+
 // Referenced from Lecture 10 slides
-void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c){
+void update_temp_meas_gatt_and_send_indication(int temp_in_c){
    sl_status_t sc;
 
   // convert temperature for bluetooth
@@ -91,6 +85,11 @@ void update_temp_meas_gatt_and_send_indication(uint16_t temp_in_c){
            //LOG_INFO("indication in flight\r\n");
        }
    }
+
+   // print temperature on lcd
+   displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
+   // update latest temperature value
+   latest_temp = temp_in_c;
 }
 
 
@@ -151,24 +150,41 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
       // Start LCD Display
       displayInit();
+
+      uint16_t ble_addr[6]; // due to printf errors
+      uint8_t* addr = (uint8_t*)&ble_data.myAddress;
+      // storing address as uint16_t arr to print address
+      for (int i = 0; i < 6; i++){
+          ble_addr[i] = (uint16_t)(*addr);
+          addr++;
+      }
+
+      // Write Info to LCD Display
+      displayPrintf(DISPLAY_ROW_NAME, "Server");
+      displayPrintf(DISPLAY_ROW_BTADDR, "%02X:%02X:%02X:%02X:%02X:%02X",
+                    ble_addr[0], ble_addr[1], ble_addr[2],
+                    ble_addr[3], ble_addr[4], ble_addr[5]);
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
+      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A6");
+
       break;
     // Indicates that a new connection was opened
     case sl_bt_evt_connection_opened_id:
       bt_conn_open = evt->data.evt_connection_opened;
 
-      // handle open event
+      // stop advertising once connection complete
       sc = sl_bt_advertiser_stop(ble_data.advertisingSetHandle);
       if (sc != SL_STATUS_OK){
          LOG_ERROR("Error stopping Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
 
-
       // request sl_bt_connection parameter
       sc = sl_bt_connection_set_parameters(bt_conn_open.connection,
-                                           CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL),
-                                           CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL),
-                                           SLAVE_LATENCY_INTERVALS,
-                                           SUPERVISION_TIMEOUT,
+                                           CONNECTION_INTERVAL(75), // 75ms
+                                           CONNECTION_INTERVAL(75), // 75ms
+                                           1, // up to 1 missed, this causes some errors with
+                                                  //the Si Connect app with some values
+                                           1600, // 16 second timeout, for weak bluetooth signals
                                            0, // default for connection event min/maxlength
                                            0xffff
                                            );
@@ -176,9 +192,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
          LOG_ERROR("Error requesting Bluetooth connection parameters, Error code: 0x%x\r\n", (uint16_t)sc);
       }
 
-
       ble_data.connectionHandle = bt_conn_open.connection;
       ble_data.connection_alive = true;
+
+      // display that server in connected mode
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
       break;
     // sl_bt_evt_connection_closed_id
     case sl_bt_evt_connection_closed_id:
@@ -199,6 +217,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.ok_to_send_htm_indications = 0;
       ble_data.indication_in_flight = false;
       ble_data.connection_alive = false;
+
+      // display that server in advertising mode
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
+      // clear temperature on lcd
+      displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
       break;
     // Triggered whenever the connection parameters are changed and at any
     // time a connection is established
@@ -237,9 +260,12 @@ void handle_ble_event(sl_bt_msg_t* evt){
               // indication flag
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_indication){
                 ble_data.ok_to_send_htm_indications = true;
+                // lcd temperature only updated when temperature measured
               }
               else{
                 ble_data.ok_to_send_htm_indications = false;
+                // clear temperature on lcd
+                displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
               }
 
               //LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);

@@ -51,6 +51,7 @@ void gpioLed1SetOff();
 
 // LCD Display
 void gpioSetDisplayExtcomin(bool extcomin);
+void gpioSensorEnSetOn();
 
 
 #endif /* SRC_GPIO_H_ */

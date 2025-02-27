@@ -124,7 +124,7 @@ void SI7021_start_read_sensor(){
   }
 }
 
-uint16_t SI7021_read_measured_temp(){
+int SI7021_read_measured_temp(){
   // SI7021 sends 2-byte data, MSB then LSB (big-endian)
   // uint16_t is little-endian, so you can't directly store to uint16_t
   // add values from 0
