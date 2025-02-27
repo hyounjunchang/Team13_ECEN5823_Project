@@ -18,6 +18,8 @@
 #include "scheduler.h"
 #include "lcd.h" // for LCD display
 
+#include <stdint.h>
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -297,6 +299,10 @@ void handle_ble_event(sl_bt_msg_t* evt){
               ble_data.indication_in_flight = true;
           }
       }
+      break;
+    // Bluetooth soft timer interrupt (1 second)
+    case sl_bt_evt_system_soft_timer_id:
+      displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
       break;
     // ******************************************************
     // Events for Client
