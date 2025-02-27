@@ -58,6 +58,9 @@
 #define SI7021_ENABLE_PORT gpioPortD
 #define SI7021_ENABLE_PIN 15
 
+#define DISP_EXTCOMIN_PORT gpioPortD
+#define DISP_EXTCOMIN_PIN 13
+
 
 // called during boot_up in app.c
 void gpioInit()
@@ -149,6 +152,15 @@ void gpioLed1SetOn()
 void gpioLed1SetOff()
 {
 	GPIO_PinOutClear(LED_port, LED1_pin);
+}
+
+void gpioSetDisplayExtcomin(bool extcomin){
+  if(extcomin){
+      GPIO_PinOutSet(DISP_EXTCOMIN_PORT, DISP_EXTCOMIN_PIN);
+  }
+  else{
+      GPIO_PinOutClear(DISP_EXTCOMIN_PORT, DISP_EXTCOMIN_PIN);
+  }
 }
 
 

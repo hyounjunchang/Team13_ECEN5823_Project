@@ -16,6 +16,7 @@
 #include "gatt_db.h"
 
 #include "scheduler.h"
+#include "lcd.h" // for LCD display
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -147,6 +148,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
       if (sc != SL_STATUS_OK){
           LOG_ERROR("Error starting Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
+
+      // Start LCD Display
+      displayInit();
       break;
     // Indicates that a new connection was opened
     case sl_bt_evt_connection_opened_id:
