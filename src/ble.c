@@ -34,6 +34,14 @@
 #define CONNECTION_INTERVAL(x) (x * 4) / 5
 #define CONN_INTERVAL_MS_VAL 75
 
+// 75ms latency, so slave latency = (4 - 1) intervals can be skipped
+#define SLAVE_LATENCY_MS_VAL 300
+#define SLAVE_LATENCY_INTERVALS (SLAVE_LATENCY_MS_VAL / CONN_INTERVAL_MS_VAL) - 1
+
+#define SUPERVISION_TIMEOUT_MS_VAL (1 + SLAVE_LATENCY_INTERVALS) * (CONN_INTERVAL_MS_VAL * 2)
+// divide by 10 since each value is 10ms
+#define SUPERVISION_TIMEOUT (SUPERVISION_TIMEOUT_MS_VAL / 10) + 1 // +1 to meet supervision req
+
 // BLE private data
 ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .advertisingSetHandle = 0, .connectionHandle = 0,
@@ -182,11 +190,10 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
       // request sl_bt_connection parameter
       sc = sl_bt_connection_set_parameters(bt_conn_open.connection,
-                                           CONNECTION_INTERVAL(75), // 75ms
-                                           CONNECTION_INTERVAL(75), // 75ms
-                                           1, // up to 1 missed, this causes some errors with
-                                                  //the Si Connect app with some values
-                                           1600, // 16 second timeout, for weak bluetooth signals
+                                           CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL), // 75ms
+                                           CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL), // 75ms
+                                           SLAVE_LATENCY_INTERVALS, // see declaration above
+                                           SUPERVISION_TIMEOUT, // see declaration above
                                            0, // default for connection event min/maxlength
                                            0xffff
                                            );
