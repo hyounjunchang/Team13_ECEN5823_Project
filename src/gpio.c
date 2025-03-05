@@ -68,7 +68,6 @@
 void gpioInit()
 {
   gpioInit_SI7021();
-  initialize_I2C();
 } // gpioInit()
 
 void gpioInit_LED(){
