@@ -22,6 +22,7 @@
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
+#if DEVICE_IS_BLE_SERVER == 1 // BLE Server Macros Declarations
 #define I2C_READ 0b1
 #define I2C_WRITE 0b0
 
@@ -38,7 +39,6 @@
 
 // SI7021 Commands
 #define MEASURE_TEMP_NO_HOLD 0xF3// no hold master mode, no clock stretching
-
 
 
 // global variables
@@ -141,3 +141,4 @@ int SI7021_read_measured_temp(){
 uint8_t* getReadData_buf(){
   return &(read_data[0]);
 }
+#endif

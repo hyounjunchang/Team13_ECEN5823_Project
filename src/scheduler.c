@@ -27,6 +27,7 @@
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
+#if DEVICE_IS_BLE_SERVER == 1
 // Define bit-flags
 #define NO_FLAG 0x0
 #define BLE_LETIMER0_UF_FLAG 0x1
@@ -34,49 +35,14 @@
 #define BLE_I2C_TRANSFER_FLAG 0x4
 
 static SI7021_state currState_SI7021 = SI7021_IDLE;
-
-
-// edited from Lecture 6 slides
-// returns a scheduler_event among one of the events available
-// clears returned event flag
-// no longer used
-/*
-scheduler_event getNextEvent(){
-  CORE_DECLARE_IRQ_STATE;
-  scheduler_event next_event = NO_EVENT;
-
-  // clear flag and return event
-  // This is different from register flags!!!
-  if (active_events.flag_0){
-      if (active_events.flag_0 & BLE_I2C_TRANSFER_FLAG){
-          CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-          active_events.flag_0 &= ~BLE_I2C_TRANSFER_FLAG;
-          CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return EVENT_I2C_TRANSFER;
-      }
-      else if (active_events.flag_0 & BLE_LETIMER0_COMP1_FLAG){
-          CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-          active_events.flag_0 &= ~BLE_LETIMER0_COMP1_FLAG;
-          CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return EVENT_LETIMER0_COMP1;
-      }
-      else if (active_events.flag_0 & BLE_LETIMER0_UF_FLAG){
-          CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
-          active_events.flag_0 &= ~BLE_LETIMER0_UF_FLAG;
-          CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
-          return EVENT_LETIMER0_UF;
-      }
-  }
-
-  return next_event;
-}
-*/
+#endif
 
 // edited from Lecture 6 slides
 // sets event flag for future use
 void set_scheduler_event(scheduler_event event){
-  sl_status_t sc;
 
+#if DEVICE_IS_BLE_SERVER == 1
+  sl_status_t sc;
   CORE_DECLARE_IRQ_STATE;
   switch (event){
     case NO_EVENT:
@@ -109,8 +75,10 @@ void set_scheduler_event(scheduler_event event){
     default:
       break;
   }
+#endif
 }
 
+#if DEVICE_IS_BLE_SERVER == 1
 SI7021_state get_SI7021_state(){
   return currState_SI7021;
 }
@@ -177,3 +145,7 @@ void temperature_state_machine(sl_bt_msg_t* evt){
       break;
   }
 }
+#else
+
+
+#endif

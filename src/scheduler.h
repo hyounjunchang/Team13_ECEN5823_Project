@@ -25,6 +25,8 @@ typedef enum{
     EVENT_I2C_TRANSFER
 } scheduler_event;
 
+
+#if DEVICE_IS_BLE_SERVER == 1
 typedef enum{
   SI7021_IDLE,
   SI7021_WAIT_POWER_UP,
@@ -32,6 +34,7 @@ typedef enum{
   SI7021_WAIT_I2C_READ_START,
   SI7021_WAIT_I2C_READ_COMPLETE
 } SI7021_state;
+#endif
 
 
 // for use in app.c
@@ -40,13 +43,13 @@ typedef enum{
 // for use by IRQ
 void set_scheduler_event(scheduler_event event);
 
+#if DEVICE_IS_BLE_SERVER == 1 // functions only for server
 // for SI7021 state machine
 SI7021_state get_SI7021_state();
-
 // temp state machine using ble event
 void temperature_state_machine(sl_bt_msg_t* evt);
+#else // functions for client
 
-
-uint8_t* get_htm_temperature_buffer_ptr();
+#endif
 
 #endif
