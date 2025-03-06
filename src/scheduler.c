@@ -35,13 +35,15 @@
 #define BLE_I2C_TRANSFER_FLAG 0x4
 
 static SI7021_state currState_SI7021 = SI7021_IDLE;
+#else
+static ble_client_state currState_client = BLE_OFF;
 #endif
 
 // edited from Lecture 6 slides
 // sets event flag for future use
 void set_scheduler_event(scheduler_event event){
 
-#if DEVICE_IS_BLE_SERVER == 1
+#if DEVICE_IS_BLE_SERVER
   sl_status_t sc;
   CORE_DECLARE_IRQ_STATE;
   switch (event){
@@ -78,7 +80,7 @@ void set_scheduler_event(scheduler_event event){
 #endif
 }
 
-#if DEVICE_IS_BLE_SERVER == 1
+#if DEVICE_IS_BLE_SERVER
 SI7021_state get_SI7021_state(){
   return currState_SI7021;
 }
@@ -146,6 +148,13 @@ void temperature_state_machine(sl_bt_msg_t* evt){
   }
 }
 #else
+ble_client_state get_client_state(){
+  return currState_client;
+}
 
-
+// update client state machine
+void client_state_machine(sl_bt_msg_t* evt){
+  ble_client_state nextState_client = currState_client;
+  currState_client = nextState_client;
+}
 #endif

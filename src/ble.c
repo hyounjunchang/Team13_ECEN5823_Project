@@ -10,7 +10,7 @@
  *
  *
  */
-
+#include "ble_device_type.h"
 #include "ble.h"
 #include "sl_bluetooth.h"
 #include "gatt_db.h"
@@ -29,18 +29,25 @@
 #define ADVERTISING_INTERVAL(x) (x * 8) / 5
 #define AD_INVERTAL_MS_VAL 250
 
-
 // each tick is 1.25ms --> 1/1.25 = 0.8
 #define CONNECTION_INTERVAL(x) (x * 4) / 5
 #define CONN_INTERVAL_MS_VAL 75
 
-// 75ms latency, so slave latency = (4 - 1) intervals can be skipped
+// 300ms latency
 #define SLAVE_LATENCY_MS_VAL 300
-#define SLAVE_LATENCY_INTERVALS (SLAVE_LATENCY_MS_VAL / CONN_INTERVAL_MS_VAL) - 1
+#define SLAVE_LATENCY_INTERVALS 4 // 300/75
 
-#define SUPERVISION_TIMEOUT_MS_VAL (1 + SLAVE_LATENCY_INTERVALS) * (CONN_INTERVAL_MS_VAL * 2)
+#define SUPERVISION_TIMEOUT_MS_VAL (1 + SLAVE_LATENCY_INTERVALS) * (CONN_INTERVAL_MS_VAL * 2) + CONN_INTERVAL_MS_VAL
 // divide by 10 since each value is 10ms
 #define SUPERVISION_TIMEOUT (SUPERVISION_TIMEOUT_MS_VAL / 10) + 1 // +1 to meet supervision req
+
+// Used by Client Only
+
+// each tick is 0.625 ms -> 1/0.625 = 1.6
+#define SCANNING_INTERVAL(x) (x * 8) / 5
+#define SCAN_INTERVAL_MS_vAL 50
+#define SCAN_WINDOW_MS_VAL 25
+
 
 // BLE private data
 ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
@@ -49,11 +56,15 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .ok_to_send_htm_indications = false,
                               .indication_in_flight = false};
 
-// buffer for sending values
+// buffer for sending values for server
 uint8_t htm_temperature_buffer[5];
 uint8_t *p = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
+
+// for client, uuid in little-endian format
+uint8_t uuid_health_thermometer[2] = {0x09, 0x18};
+uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
 
 int latest_temp = 0;
 
@@ -114,9 +125,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
   sl_bt_evt_connection_opened_t bt_conn_open;
   //sl_bt_evt_connection_parameters_t bt_conn_param;
 
-  // for updating
+  // for server states
+#if DEVICE_IS_BLE_SERVER
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
   uint16_t characteristic;
+#endif
 
 #if DEVICE_IS_BLE_SERVER
   switch (SL_BT_MSG_ID(evt->header)) {
@@ -325,15 +338,26 @@ void handle_ble_event(sl_bt_msg_t* evt){
        }
 
        // start scanning for server
-       sc = sl_bt_scanner_set_parameters();
+       sc = sl_bt_scanner_set_parameters(sl_bt_scanner_scan_mode_passive,
+                                         SCANNING_INTERVAL(SCAN_INTERVAL_MS_vAL),
+                                         SCANNING_INTERVAL(SCAN_WINDOW_MS_VAL)); // passive scan, 50ms interval, 25ms window
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error setting scanner parameters, Error code: 0x%x\r\n", (uint16_t)sc);
        }
-       sc = sl_bt_connection_set_default_parameters();
+
+       // default connection parameters
+       sc = sl_bt_connection_set_default_parameters(CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL), // 75ms
+                                                    CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL), // 75ms
+                                                    SLAVE_LATENCY_INTERVALS, // 4 skipped
+                                                    SUPERVISION_TIMEOUT,
+                                                    0, 4); // Connection event length: min = 0ms, max = 4 * 0.625ms
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error setting connection default parameters, Error code: 0x%x\r\n", (uint16_t)sc);
        }
-       sc = sl_bt_scanner_start();
+
+       // start scanning for device
+       sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
+                                sl_bt_scanner_discover_generic); // limited and general
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error starting Bluetooth scanner, Error code: 0x%x\r\n", (uint16_t)sc);
        }
@@ -361,8 +385,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
        // store ble connection handle
        bt_conn_open = evt->data.evt_connection_opened;
        ble_data.connectionHandle = bt_conn_open.connection;
+       // discover health thermometer service
 
-       sc = sl_bt_gatt_discover_primary_services_by_uuid();
+       sc = sl_bt_gatt_discover_primary_services_by_uuid(ble_data.connectionHandle,
+                                                         2,
+                                                         &uuid_health_thermometer[0]);
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error discovering GATT services, Error code: 0x%x\r\n", (uint16_t)sc);
        }
@@ -371,7 +398,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
        break;
      // sl_bt_evt_connection_closed_id
      case sl_bt_evt_connection_closed_id:
-       sc = sl_bt_scanner_start();
+       // start scanning for device
+       sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
+                                sl_bt_scanner_discover_generic); // limited and general
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error starting Bluetooth scanner, Error code: 0x%x\r\n", (uint16_t)sc);
        }
@@ -412,7 +441,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
      // Indication or Notification has been received
      case sl_bt_evt_gatt_characteristic_value_id:
        // send confirmation for temperature indication
-       sc = sl_bt_gatt_send_characteristic_confirmation();
+       sc = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionHandle);
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error sending GATT indication confirmation, Error code: 0x%x\r\n", (uint16_t)sc);
        }
