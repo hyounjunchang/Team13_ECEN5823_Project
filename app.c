@@ -190,10 +190,10 @@ SL_WEAK void app_init(void)
   }
 
   initialize_oscillators();
-
-// server uses LETIMER, GPIO, and I2C
-#if DEVICE_IS_BLE_SERVER
   init_LETIMER0();
+
+// server uses GPIO, and I2C
+#if DEVICE_IS_BLE_SERVER
   gpioInit();
   initialize_I2C();
 #endif
