@@ -36,7 +36,7 @@
 
 static SI7021_state currState_SI7021 = SI7021_IDLE;
 #else
-static ble_client_state currState_client = BLE_OFF;
+static ble_client_state currState_client = CLIENT_BLE_OFF;
 #endif
 
 // edited from Lecture 6 slides
@@ -155,6 +155,14 @@ ble_client_state get_client_state(){
 // update client state machine
 void client_state_machine(sl_bt_msg_t* evt){
   ble_client_state nextState_client = currState_client;
+  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_boot_id){
+      nextState_client = CLIENT_SCANNING;
+  }
+  else if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_scanner_legacy_advertisement_report_id){
+      nextState_client == CLIENT_CHECK_GATT_SERVICE;
+  }
+
+  // update to new state
   currState_client = nextState_client;
 }
 #endif
