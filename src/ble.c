@@ -130,7 +130,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
   uint16_t characteristic;
 #else
   sl_bt_evt_scanner_legacy_advertisement_report_t scan_report;
-
+  sl_bt_evt_gatt_procedure_completed_t gatt_completed;
 #endif
 
 #if DEVICE_IS_BLE_SERVER
@@ -420,9 +420,10 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
        // store ble connection handle
        bt_conn_open = evt->data.evt_connection_opened;
-       ble_data.connectionHandle = bt_conn_open.connection;
-       // discover health thermometer service
 
+       ble_data.connectionHandle = bt_conn_open.connection;
+       ble_data.connection_alive = true;
+       // discover health thermometer service
        sc = sl_bt_gatt_discover_primary_services_by_uuid(ble_data.connectionHandle,
                                                          2,
                                                          &uuid_health_thermometer[0]);
@@ -457,8 +458,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
      case sl_bt_evt_gatt_procedure_completed_id:
        LOG_INFO("BLE GATT procedure completed\r\n");
        // display temperature displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
-       // sl_bt_gatt_discover_characteristics_by_uuid();
-       // sl_bt_gatt_set_characteristic_notification()
+       // sc = sl_bt_gatt_discover_characteristics_by_uuid();
+       // sc = sl_bt_gatt_set_characteristic_notification()
        break;
      // GATT service discovered
      case sl_bt_evt_gatt_service_id:

@@ -77,6 +77,12 @@ void set_scheduler_event(scheduler_event event){
     default:
       break;
   }
+#else
+  // just to remove compiler warnings
+  switch (event){
+    default:
+      break;
+  }
 #endif
 }
 
@@ -154,15 +160,49 @@ ble_client_state get_client_state(){
 
 // update client state machine
 void client_state_machine(sl_bt_msg_t* evt){
-  ble_client_state nextState_client = currState_client;
-  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_boot_id){
-      nextState_client = CLIENT_SCANNING;
-  }
-  else if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_scanner_legacy_advertisement_report_id){
-      nextState_client == CLIENT_CHECK_GATT_SERVICE;
-  }
 
-  // update to new state
-  currState_client = nextState_client;
+  switch (currState_client){
+    case CLIENT_BLE_OFF:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_boot_id){
+          currState_client = CLIENT_SCANNING;
+      }
+      break;
+    case CLIENT_SCANNING:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_opened_id){
+          currState_client = CLIENT_CHECK_GATT_SERVICE;
+      }
+      break;
+    case CLIENT_CHECK_GATT_SERVICE:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
+          sl_bt_evt_gatt_procedure_completed_t gatt_completed = evt->data.evt_gatt_procedure_completed;
+          if (gatt_completed.result == SL_STATUS_OK){
+              currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC;
+          }
+      }
+      break;
+    case CLIENT_CHECK_GATT_CHARACTERSTIC:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
+          sl_bt_evt_gatt_procedure_completed_t gatt_completed = evt->data.evt_gatt_procedure_completed;
+          if (gatt_completed.result == SL_STATUS_OK){
+              currState_client = CLIENT_SET_GATT_INDICATION;
+          }
+      }
+      break;
+    case CLIENT_SET_GATT_INDICATION:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
+          sl_bt_evt_gatt_procedure_completed_t gatt_completed = evt->data.evt_gatt_procedure_completed;
+          if (gatt_completed.result == SL_STATUS_OK){
+              currState_client = CLIENT_RECEIVE_TEMP_DATA;
+          }
+      }
+      break;
+    case CLIENT_RECEIVE_TEMP_DATA:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id){
+          currState_client = CLIENT_SCANNING;
+      }
+      break;
+    default:
+      break;
+  }
 }
 #endif

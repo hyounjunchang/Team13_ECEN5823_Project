@@ -33,18 +33,17 @@ typedef struct {
   // values that are common to servers and clients
   bd_addr myAddress;
   uint8_t myAddressType;
-
-  // values unique for server
   // The advertising set handle allocated from Bluetooth stack.
   uint8_t advertisingSetHandle;
   uint8_t connectionHandle;
-
-  // states
   bool connection_alive;
+
+  // values unique for server
   bool ok_to_send_htm_indications;
   bool indication_in_flight;
 
   // values unique for client
+
 } ble_data_struct_t;
 
 // ble functions
