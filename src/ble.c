@@ -3,7 +3,7 @@
  * @brief     BLE module for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 20, 2025
+ * @date      Mar 7, 2025
  *
  * @resources Lecture 10
  *
@@ -435,7 +435,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
        }
 
        if (address_match){
-           LOG_INFO("address matched\r\n");
            sc = sl_bt_scanner_stop();
            if (sc != SL_STATUS_OK){
                LOG_ERROR("Error stopping Bluetooth scanner, Error code: 0x%x\r\n", (uint16_t)sc);
@@ -451,8 +450,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
        break;
      // Indicates that a new connection was opened
      case sl_bt_evt_connection_opened_id:
-       LOG_INFO("BLE connection opened\r\n");
-
        // store ble connection handle
        bt_conn_open = evt->data.evt_connection_opened;
 
@@ -467,6 +464,18 @@ void handle_ble_event(sl_bt_msg_t* evt){
        }
        // display that server in connected mode
        displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
+
+       // display server address
+       uint16_t ble_server_addr[6]; // due to printf errors
+       uint8_t* server_addr_ptr = (uint8_t*)&(SERVER_BT_ADDRESS.addr);
+       // storing address as uint16_t arr to print address
+       for (int i = 0; i < 6; i++){
+           ble_server_addr[i] = (uint16_t)(*server_addr_ptr);
+           server_addr_ptr++;
+       }
+       displayPrintf(DISPLAY_ROW_BTADDR2, "%02X:%02X:%02X:%02X:%02X:%02X",
+                     ble_server_addr[0], ble_server_addr[1], ble_server_addr[2],
+                     ble_server_addr[3], ble_server_addr[4], ble_server_addr[5]);
        break;
      // sl_bt_evt_connection_closed_id
      case sl_bt_evt_connection_closed_id:
@@ -475,6 +484,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
        ble_data.gatt_service_found = false;
        ble_data.gatt_characteristic_found = false;
        ble_data.ok_to_send_htm_indications = false;
+
+       // clear display
+       displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
+       displayPrintf(DISPLAY_ROW_BTADDR2, "");
+       displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
 
        // start scanning for device
        sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
@@ -497,12 +511,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
        break;
      // GATT procedure (find/set characteristic) completed, indication of temperature
      case sl_bt_evt_gatt_procedure_completed_id:
-       LOG_INFO("BLE GATT procedure completed\r\n");
-
        gatt_completed = evt->data.evt_gatt_procedure_completed;
        sc = gatt_completed.result;
        ble_client_state client_state = get_client_state();
-
 
        // GATT procedure successful
        if (sc == SL_STATUS_OK){
@@ -528,6 +539,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
                break;
              case CLIENT_SET_GATT_INDICATION:
                ble_data.ok_to_send_htm_indications = true;
+               displayPrintf(DISPLAY_ROW_CONNECTION, "Handling Indications");
                break;
              default:
                break;
@@ -552,14 +564,12 @@ void handle_ble_event(sl_bt_msg_t* evt){
        break;
      // GATT service discovered
      case sl_bt_evt_gatt_service_id:
-       LOG_INFO("BLE GATT service received\r\n");
        // store GATT service handle
        gatt_service = evt->data.evt_gatt_service;
        ble_data.htmServiceHandle = gatt_service.service;
        break;
      // GATT characteristic discovered in the server
      case sl_bt_evt_gatt_characteristic_id:
-       LOG_INFO("BLE GATT characteristic received\r\n");
        // store GATT characteristic handle
        gatt_characteristic = evt->data.evt_gatt_characteristic;
        ble_data.tempMeasHandle = gatt_characteristic.characteristic;
@@ -567,27 +577,20 @@ void handle_ble_event(sl_bt_msg_t* evt){
      // Indication or Notification has been received
      case sl_bt_evt_gatt_characteristic_value_id:
        val_ptr = &(evt->data.evt_gatt_characteristic_value.value.data[0]);
+       int temperature = (int) FLOAT_TO_INT32(val_ptr);
 
-       /*
-       uint8_t temp[5];
-       temp[0] = evt->data.evt_gatt_characteristic_value.value.data[0];
-       temp[1] = evt->data.evt_gatt_characteristic_value.value.data[1];
-       temp[2] = evt->data.evt_gatt_characteristic_value.value.data[2];
-       temp[3] = evt->data.evt_gatt_characteristic_value.value.data[3];
-       temp[4] = evt->data.evt_gatt_characteristic_value.value.data[4];
-       LOG_INFO("Arr values: 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\r\n", temp[0], temp[1], temp[2], temp[3], temp[4]);
-       */
+       // print temperature on lcd
+       displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temperature);
+       // update latest temperature value
+       latest_temp = temperature;
 
-       int32_t temperature = FLOAT_TO_INT32(val_ptr);
-       LOG_INFO("Received Temperature = %d\r\n", temperature);
+       //LOG_INFO("Temp Update: %d\r\n", latest_temp);
 
        // send confirmation for temperature indication
        sc = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionHandle);
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error sending GATT indication confirmation, Error code: 0x%x\r\n", (uint16_t)sc);
        }
-
-       // display temperature displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
        break;
      // external Bluetooth signals
      case sl_bt_evt_system_external_signal_id:

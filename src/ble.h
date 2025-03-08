@@ -3,7 +3,7 @@
  * @brief     BLE module header for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 19, 2025
+ * @date      Mar 7, 2025
  *
  * @resources Assignment 5 specs
  *
