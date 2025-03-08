@@ -37,20 +37,25 @@ typedef struct {
   uint8_t advertisingSetHandle;
   uint8_t connectionHandle;
   bool connection_alive;
+  bool ok_to_send_htm_indications;
 
   // values unique for server
-  bool ok_to_send_htm_indications;
   bool indication_in_flight;
 
   // values unique for client
+  bool gatt_service_found;
+  bool gatt_characteristic_found;
+  uint32_t htmServiceHandle;
+  uint16_t tempMeasHandle;
 
 } ble_data_struct_t;
 
 // ble functions
 ble_data_struct_t* get_ble_data();
 
-// update gatt and send indicator
-void update_temp_meas_gatt_and_send_indication(int temp_in_c);
+#if DEVICE_IS_BLE_SERVER
+void update_temp_meas_gatt_and_send_indication(int temp_in_c); // update gatt and send indicator
+#endif
 
 void handle_ble_event(sl_bt_msg_t* evt);
 

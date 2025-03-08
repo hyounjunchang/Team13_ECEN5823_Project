@@ -91,6 +91,7 @@ SI7021_state get_SI7021_state(){
   return currState_SI7021;
 }
 
+// updates SI7021 state machine, and performs tasks to get to the next state)
 void temperature_state_machine(sl_bt_msg_t* evt){
   // only update on external signal (non-bluetooth)
   if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
@@ -158,8 +159,9 @@ ble_client_state get_client_state(){
   return currState_client;
 }
 
-// update client state machine
+// update client state machine for ble, state is checked by ble.c to check which actions to take
 void client_state_machine(sl_bt_msg_t* evt){
+  ble_data_struct_t* ble_data_ptr = get_ble_data();
 
   switch (currState_client){
     case CLIENT_BLE_OFF:
@@ -174,24 +176,21 @@ void client_state_machine(sl_bt_msg_t* evt){
       break;
     case CLIENT_CHECK_GATT_SERVICE:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
-          sl_bt_evt_gatt_procedure_completed_t gatt_completed = evt->data.evt_gatt_procedure_completed;
-          if (gatt_completed.result == SL_STATUS_OK){
+          if (ble_data_ptr->gatt_service_found){
               currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC;
           }
       }
       break;
     case CLIENT_CHECK_GATT_CHARACTERSTIC:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
-          sl_bt_evt_gatt_procedure_completed_t gatt_completed = evt->data.evt_gatt_procedure_completed;
-          if (gatt_completed.result == SL_STATUS_OK){
+          if (ble_data_ptr->gatt_characteristic_found){
               currState_client = CLIENT_SET_GATT_INDICATION;
           }
       }
       break;
     case CLIENT_SET_GATT_INDICATION:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
-          sl_bt_evt_gatt_procedure_completed_t gatt_completed = evt->data.evt_gatt_procedure_completed;
-          if (gatt_completed.result == SL_STATUS_OK){
+          if (ble_data_ptr->ok_to_send_htm_indications){
               currState_client = CLIENT_RECEIVE_TEMP_DATA;
           }
       }

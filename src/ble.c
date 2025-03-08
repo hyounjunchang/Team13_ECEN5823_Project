@@ -19,6 +19,7 @@
 #include "lcd.h" // for LCD display
 
 #include <stdint.h>
+#include <math.h>
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -45,7 +46,7 @@
 
 // each tick is 0.625 ms -> 1/0.625 = 1.6
 #define SCANNING_INTERVAL(x) (x * 8) / 5
-#define SCAN_INTERVAL_MS_vAL 50
+#define SCAN_INTERVAL_MS_VAL 50
 #define SCAN_WINDOW_MS_VAL 25
 
 
@@ -54,7 +55,12 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .advertisingSetHandle = 0, .connectionHandle = 0,
                               .connection_alive = false,
                               .ok_to_send_htm_indications = false,
-                              .indication_in_flight = false};
+                              .indication_in_flight = false,
+                              .gatt_service_found = false,
+                              .gatt_characteristic_found = false,
+                              .htmServiceHandle = 0,
+                              .tempMeasHandle = 0};
+
 
 // buffer for sending values for server
 uint8_t htm_temperature_buffer[5];
@@ -68,6 +74,7 @@ uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
 
 int latest_temp = 0;
 
+#if DEVICE_IS_BLE_SERVER
 // Referenced from Lecture 10 slides
 void update_temp_meas_gatt_and_send_indication(int temp_in_c){
    sl_status_t sc;
@@ -112,6 +119,32 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
    // update latest temperature value
    latest_temp = temp_in_c;
 }
+#else
+// Private function, original from Dan Walkes. I fixed a sign extension bug.
+// We'll need this for Client A7 assignment to convert health thermometer
+// indications back to an integer. Convert IEEE-11073 32-bit float to signed integer.
+static int32_t FLOAT_TO_INT32(const uint8_t *buffer_ptr)
+{
+  uint8_t signByte = 0;
+  int32_t mantissa;
+  // input data format is:
+  // [0] = flags byte, bit[0] = 0 -> Celsius; =1 -> Fahrenheit
+  // [3][2][1] = mantissa (2's complement)
+  // [4] = exponent (2's complement)
+  // BT buffer_ptr[0] has the flags byte
+  int8_t exponent = (int8_t)buffer_ptr[4];
+  // sign extend the mantissa value if the mantissa is negative
+  if (buffer_ptr[3] & 0x80) { // msb of [3] is the sign of the mantissa
+  signByte = 0xFF;
+  }
+  mantissa = (int32_t) (buffer_ptr[1] << 0) |
+  (buffer_ptr[2] << 8) |
+  (buffer_ptr[3] << 16) |
+  (signByte << 24) ;
+  // value = 10^exponent * mantissa, pow() returns a double type
+  return (int32_t) (pow(10, exponent) * mantissa);
+} // FLOAT_TO_INT32
+#endif
 
 
 ble_data_struct_t* get_ble_data(){
@@ -131,6 +164,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
 #else
   sl_bt_evt_scanner_legacy_advertisement_report_t scan_report;
   sl_bt_evt_gatt_procedure_completed_t gatt_completed;
+  sl_bt_evt_gatt_service_t gatt_service;
+  sl_bt_evt_gatt_characteristic_t gatt_characteristic;
+  uint8_t *val_ptr;
 #endif
 
 #if DEVICE_IS_BLE_SERVER
@@ -224,6 +260,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
       break;
     // sl_bt_evt_connection_closed_id
     case sl_bt_evt_connection_closed_id:
+      // update states
+      ble_data.ok_to_send_htm_indications = false;
+      ble_data.indication_in_flight = false;
+      ble_data.connection_alive = false;
+
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
                                                  sl_bt_advertiser_general_discoverable);
@@ -236,11 +277,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       if (sc != SL_STATUS_OK){
          LOG_ERROR("Error starting Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
-
-      // update states
-      ble_data.ok_to_send_htm_indications = 0;
-      ble_data.indication_in_flight = false;
-      ble_data.connection_alive = false;
 
       // display that server in advertising mode
       displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
@@ -341,7 +377,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
        // start scanning for server
        sc = sl_bt_scanner_set_parameters(sl_bt_scanner_scan_mode_passive,
-                                         SCANNING_INTERVAL(SCAN_INTERVAL_MS_vAL),
+                                         SCANNING_INTERVAL(SCAN_INTERVAL_MS_VAL),
                                          SCANNING_INTERVAL(SCAN_WINDOW_MS_VAL)); // passive scan, 50ms interval, 25ms window
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error setting scanner parameters, Error code: 0x%x\r\n", (uint16_t)sc);
@@ -391,7 +427,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
        uint8_t* scanned_addr = (uint8_t*)&(scan_report.address);
        uint8_t* server_addr = (uint8_t*)&(SERVER_BT_ADDRESS.addr);
        for (int i = 0; i < 6; i++){
-           LOG_INFO("Server Found\r\n");
            if (*scanned_addr != *server_addr){
                address_match = false;
            }
@@ -435,6 +470,12 @@ void handle_ble_event(sl_bt_msg_t* evt){
        break;
      // sl_bt_evt_connection_closed_id
      case sl_bt_evt_connection_closed_id:
+       // update states
+       ble_data.connection_alive = false;
+       ble_data.gatt_service_found = false;
+       ble_data.gatt_characteristic_found = false;
+       ble_data.ok_to_send_htm_indications = false;
+
        // start scanning for device
        sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
                                 sl_bt_scanner_discover_generic); // limited and general
@@ -457,27 +498,96 @@ void handle_ble_event(sl_bt_msg_t* evt){
      // GATT procedure (find/set characteristic) completed, indication of temperature
      case sl_bt_evt_gatt_procedure_completed_id:
        LOG_INFO("BLE GATT procedure completed\r\n");
-       // display temperature displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
-       // sc = sl_bt_gatt_discover_characteristics_by_uuid();
-       // sc = sl_bt_gatt_set_characteristic_notification()
+
+       gatt_completed = evt->data.evt_gatt_procedure_completed;
+       sc = gatt_completed.result;
+       ble_client_state client_state = get_client_state();
+
+
+       // GATT procedure successful
+       if (sc == SL_STATUS_OK){
+           switch(client_state){
+             case CLIENT_CHECK_GATT_SERVICE:
+               ble_data.gatt_service_found = true;
+               sc = sl_bt_gatt_discover_characteristics_by_uuid(ble_data.connectionHandle,
+                                                                ble_data.htmServiceHandle,
+                                                                2,
+                                                                &uuid_temp_measurement[0]);
+               if (sc != SL_STATUS_OK){
+                   LOG_ERROR("Error discovering GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
+               }
+               break;
+             case CLIENT_CHECK_GATT_CHARACTERSTIC:
+               ble_data.gatt_characteristic_found = true;
+               sc = sl_bt_gatt_set_characteristic_notification(ble_data.connectionHandle,
+                                                               ble_data.tempMeasHandle,
+                                                               sl_bt_gatt_indication);
+               if (sc != SL_STATUS_OK){
+                   LOG_ERROR("Error setting GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
+               }
+               break;
+             case CLIENT_SET_GATT_INDICATION:
+               ble_data.ok_to_send_htm_indications = true;
+               break;
+             default:
+               break;
+           }
+       }
+       // GATT procedure failed
+       else{
+           switch(client_state){
+             case CLIENT_CHECK_GATT_SERVICE:
+               LOG_ERROR("Error finding GATT service, Error code: 0x%x\r\n", (uint16_t)sc);
+               break;
+             case CLIENT_CHECK_GATT_CHARACTERSTIC:
+               LOG_ERROR("Error finding GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
+               break;
+             case CLIENT_SET_GATT_INDICATION:
+               LOG_ERROR("Error setting GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
+               break;
+             default:
+               break;
+           }
+       }
        break;
      // GATT service discovered
      case sl_bt_evt_gatt_service_id:
        LOG_INFO("BLE GATT service received\r\n");
-
+       // store GATT service handle
+       gatt_service = evt->data.evt_gatt_service;
+       ble_data.htmServiceHandle = gatt_service.service;
        break;
      // GATT characteristic discovered in the server
      case sl_bt_evt_gatt_characteristic_id:
        LOG_INFO("BLE GATT characteristic received\r\n");
-
+       // store GATT characteristic handle
+       gatt_characteristic = evt->data.evt_gatt_characteristic;
+       ble_data.tempMeasHandle = gatt_characteristic.characteristic;
        break;
      // Indication or Notification has been received
      case sl_bt_evt_gatt_characteristic_value_id:
+       val_ptr = &(evt->data.evt_gatt_characteristic_value.value.data[0]);
+
+       /*
+       uint8_t temp[5];
+       temp[0] = evt->data.evt_gatt_characteristic_value.value.data[0];
+       temp[1] = evt->data.evt_gatt_characteristic_value.value.data[1];
+       temp[2] = evt->data.evt_gatt_characteristic_value.value.data[2];
+       temp[3] = evt->data.evt_gatt_characteristic_value.value.data[3];
+       temp[4] = evt->data.evt_gatt_characteristic_value.value.data[4];
+       LOG_INFO("Arr values: 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\r\n", temp[0], temp[1], temp[2], temp[3], temp[4]);
+       */
+
+       int32_t temperature = FLOAT_TO_INT32(val_ptr);
+       LOG_INFO("Received Temperature = %d\r\n", temperature);
+
        // send confirmation for temperature indication
        sc = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionHandle);
        if (sc != SL_STATUS_OK){
            LOG_ERROR("Error sending GATT indication confirmation, Error code: 0x%x\r\n", (uint16_t)sc);
        }
+
+       // display temperature displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
        break;
      // external Bluetooth signals
      case sl_bt_evt_system_external_signal_id:
