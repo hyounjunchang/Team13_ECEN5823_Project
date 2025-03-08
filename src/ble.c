@@ -77,6 +77,8 @@ int latest_temp = 0;
 #if DEVICE_IS_BLE_SERVER
 // Referenced from Lecture 10 slides
 void update_temp_meas_gatt_and_send_indication(int temp_in_c){
+   p = &htm_temperature_buffer[0]; // reset pointer, otherwise causes segmentation fault
+
    sl_status_t sc;
 
   // convert temperature for bluetooth
@@ -340,23 +342,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
     // Indicates confirmation from the remote GATT client has not been
     // received within 30 seconds after an indication was sent
     case sl_bt_evt_gatt_server_indication_timeout_id:
-      // LOG_INFO("Received Indication Timeout\r\n");
-      // send indication
-      if (ble_data.ok_to_send_htm_indications) {
-          sc = sl_bt_gatt_server_send_indication(
-            ble_data.connectionHandle,
-            gattdb_temperature_measurement, // handle from gatt_db.h
-            5,
-            p // in IEEE-11073 format
-          );
-          if (sc != SL_STATUS_OK) {
-              LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
-              ble_data.indication_in_flight = false;
-          }
-          else{
-              ble_data.indication_in_flight = true;
-          }
-      }
+      LOG_ERROR("Received Indication Timeout\r\n");
       break;
     // Bluetooth soft timer interrupt (1 second)
     case sl_bt_evt_system_soft_timer_id:
