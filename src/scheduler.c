@@ -163,6 +163,12 @@ ble_client_state get_client_state(){
 void client_state_machine(sl_bt_msg_t* evt){
   ble_data_struct_t* ble_data_ptr = get_ble_data();
 
+  // if connection closed, then reset no matter which state
+  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_closed_id){
+      currState_client = CLIENT_SCANNING;
+      return;
+  }
+
   switch (currState_client){
     case CLIENT_BLE_OFF:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_boot_id){
