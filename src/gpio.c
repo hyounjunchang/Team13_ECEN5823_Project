@@ -64,10 +64,15 @@
 #define DISP_ENABLE_PORT gpioPortD
 #define DISP_ENABLE_PIN 15
 
+#define PB0_port gpioPortF
+#define PB0_pin 6 // PF6
+
 // called during boot_up in app.c
 void gpioInit()
 {
   gpioInit_SI7021();
+  gpioInit_LED();
+  gpioInit_PB0();
 } // gpioInit()
 
 void gpioInit_LED(){
@@ -115,6 +120,13 @@ void gpioPowerOn_SI7021(){
 
   // 4- Initialize the device, if required, including peripheral interrupt requests
   // 5- If using interrupts, enable NVIC interrupts for the device
+}
+
+void gpioInit_PB0(){
+  // Set GPIO pin to input
+  GPIO_PinModeSet(PB0_port, PB0_pin, gpioModeInput, false);
+  // Configure the GPIO external pin interrupt for both edges, interrupt number 6
+  GPIO_ExtIntConfig(PB0_port, PB0_pin, PB0_pin, true, true, true);
 }
 
 // Referenced from Lecture 6

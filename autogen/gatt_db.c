@@ -29,7 +29,16 @@ GATT_DATA(const uint16_t gattdb_uuidtable_16_map[]) =
 
 GATT_DATA(const uint8_t gattdb_uuidtable_128_map[]) =
 {
-  0x0 //IAR workaround for empty array
+  0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65, 0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38, 0x02, 0x00, 0x00, 0x00, 
+};
+GATT_DATA(sli_bt_gattdb_attribute_chrvalue_t gattdb_attribute_field_32) = {
+  .properties = 0x22,
+  .max_len = 1,
+  .data = { 0x00, },
+};
+GATT_DATA(const sli_bt_gattdb_value_t gattdb_attribute_field_30) = {
+  .len = 16,
+  .data = { 0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65, 0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38, 0x01, 0x00, 0x00, 0x00, }
 };
 GATT_DATA(sli_bt_gattdb_attribute_chrvalue_t gattdb_attribute_field_29) = {
   .properties = 0x02,
@@ -135,19 +144,23 @@ GATT_DATA(const sli_bt_gattdb_attribute_t gattdb_attributes_map[]) = {
   { .handle = 0x1c, .uuid = 0x0002, .permissions = 0x801, .caps = 0xffff, .state = 0x00, .datatype = 0x05, .characteristic = { .properties = 0x02, .char_uuid = 0x000a } },
   { .handle = 0x1d, .uuid = 0x000a, .permissions = 0x801, .caps = 0xffff, .state = 0x00, .datatype = 0x00, .constdata = &gattdb_attribute_field_28 },
   { .handle = 0x1e, .uuid = 0x000b, .permissions = 0x801, .caps = 0xffff, .state = 0x00, .datatype = 0x01, .dynamicdata = &gattdb_attribute_field_29 },
+  { .handle = 0x1f, .uuid = 0x0000, .permissions = 0x8801, .caps = 0xffff, .state = 0x00, .datatype = 0x00, .constdata = &gattdb_attribute_field_30 },
+  { .handle = 0x20, .uuid = 0x0002, .permissions = 0x801, .caps = 0xffff, .state = 0x00, .datatype = 0x05, .characteristic = { .properties = 0x22, .char_uuid = 0x8000 } },
+  { .handle = 0x21, .uuid = 0x8000, .permissions = 0x4841, .caps = 0xffff, .state = 0x00, .datatype = 0x01, .dynamicdata = &gattdb_attribute_field_32 },
+  { .handle = 0x22, .uuid = 0x000f, .permissions = 0xc03, .caps = 0xffff, .state = 0x00, .datatype = 0x03, .configdata = { .flags = 0x02, .clientconfig_index = 0x03 } },
 };
 
 GATT_HEADER(const sli_bt_gattdb_t gattdb) = {
   .attributes = gattdb_attributes_map,
-  .attribute_table_size = 30,
-  .attribute_num = 30,
+  .attribute_table_size = 34,
+  .attribute_num = 34,
   .uuid16 = gattdb_uuidtable_16_map,
   .uuid16_table_size = 16,
   .uuid16_num = 16,
   .uuid128 = gattdb_uuidtable_128_map,
-  .uuid128_table_size = 0,
-  .uuid128_num = 0,
-  .num_ccfg = 3,
+  .uuid128_table_size = 1,
+  .uuid128_num = 1,
+  .num_ccfg = 4,
   .caps_mask = 0xffff,
   .enabled_caps = 0xffff,
 };

@@ -33,6 +33,7 @@
 #define BLE_LETIMER0_UF_FLAG 0x1
 #define BLE_LETIMER0_COMP1_FLAG 0x2
 #define BLE_I2C_TRANSFER_FLAG 0x4
+#define BLE_PB0_FLAG 0x8
 
 static SI7021_state currState_SI7021 = SI7021_IDLE;
 #else
@@ -51,27 +52,35 @@ void set_scheduler_event(scheduler_event event){
       break;
     // prioritize I2C transfer event first
     case EVENT_I2C_TRANSFER:
-     CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+     CORE_ENTER_CRITICAL();
      sc = sl_bt_external_signal(BLE_I2C_TRANSFER_FLAG);
-     CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+     CORE_EXIT_CRITICAL();
      if (sc != SL_STATUS_OK){
          LOG_ERROR("Error setting BLE_I2C_TRANSFER_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
      }
      break;
     case EVENT_LETIMER0_COMP1:
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+      CORE_ENTER_CRITICAL();
       sc = sl_bt_external_signal(BLE_LETIMER0_COMP1_FLAG);
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+      CORE_EXIT_CRITICAL();
       if (sc != SL_STATUS_OK){
           LOG_ERROR("Error setting BLE_LETIMER0_COMP1_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
     case EVENT_LETIMER0_UF:
-      CORE_ENTER_CRITICAL(); // NVIC IRQs are disabled
+      CORE_ENTER_CRITICAL();
       sc = sl_bt_external_signal(BLE_LETIMER0_UF_FLAG);
-      CORE_EXIT_CRITICAL(); // re-enable NVIC interrupts
+      CORE_EXIT_CRITICAL();
       if (sc != SL_STATUS_OK){
           LOG_ERROR("Error setting BLE_LETIMER0_UF_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+      }
+      break;
+    case EVENT_PB0:
+      CORE_ENTER_CRITICAL();
+      sc = sl_bt_external_signal(BLE_PB0_FLAG);
+      CORE_EXIT_CRITICAL();
+      if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
     default:

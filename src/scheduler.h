@@ -23,7 +23,8 @@ typedef enum{
     NO_EVENT = 0,
     EVENT_LETIMER0_UF,
     EVENT_LETIMER0_COMP1,
-    EVENT_I2C_TRANSFER
+    EVENT_I2C_TRANSFER,
+    EVENT_PB0
 } scheduler_event;
 
 #if DEVICE_IS_BLE_SERVER

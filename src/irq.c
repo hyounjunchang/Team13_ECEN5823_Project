@@ -120,3 +120,9 @@ void I2C0_IRQHandler(void) {
       LOG_ERROR("%d", transferStatus);
   }
 } // I2C0_IRQHandler()
+
+
+void GPIO_EVEN_IRQHandler(){
+  // set event
+  set_scheduler_event(EVENT_PB0);
+}

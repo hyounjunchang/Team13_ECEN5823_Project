@@ -138,4 +138,17 @@ When used with the Measurement Interval characteristic, the Valid Range descript
       </descriptor>
     </characteristic>
   </service>
+
+  <!--ECEN5823 Encryption Test-->
+  <service advertise="true" name="ECEN5823 Encryption Test" requirement="mandatory" sourceId="" type="primary" uuid="00000001-38c8-433e-87ec-652a2d136289">
+
+    <!--ECEN5823 Encrypted Button State-->
+    <characteristic const="false" id="button_state" name="ECEN5823 Encrypted Button State" sourceId="" uuid="00000002-38c8-433e-87ec-652a2d136289">
+      <value length="1" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="true" encrypted="false"/>
+        <indicate authenticated="false" bonded="true" encrypted="false"/>
+      </properties>
+    </characteristic>
+  </service>
 </gatt>

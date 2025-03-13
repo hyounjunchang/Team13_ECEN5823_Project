@@ -18,8 +18,7 @@
 #include <stdint.h>
 
 void LETIMER0_IRQHandler();
+void I2C0_IRQHandler();
 
 uint32_t letimerMilliseconds();
-uint32_t get_LETIMER_UF_duration_ms();
-
 #endif
