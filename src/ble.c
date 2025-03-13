@@ -348,6 +348,15 @@ void handle_ble_event(sl_bt_msg_t* evt){
     case sl_bt_evt_system_soft_timer_id:
       displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
       break;
+    case sl_bt_evt_sm_confirm_bonding_id:
+      //sl_bt_sm_bonding_confirm(connection, confirm);
+      break;
+    case sl_bt_evt_sm_confirm_passkey_id:
+      break;
+    case sl_bt_evt_sm_bonded_id:
+      break;
+    case sl_bt_evt_sm_bonding_failed_id:
+      break;
     default:
       break;
   }
