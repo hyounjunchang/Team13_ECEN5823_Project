@@ -55,12 +55,13 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .advertisingSetHandle = 0, .connectionHandle = 0,
                               .connection_alive = false,
                               .ok_to_send_htm_indications = false,
+                              .passkey_received = false,
+                              .passkey_confirmed = false,
                               .indication_in_flight = false,
                               .gatt_service_found = false,
                               .gatt_characteristic_found = false,
                               .htmServiceHandle = 0,
                               .tempMeasHandle = 0};
-
 
 // buffer for sending values for server
 uint8_t htm_temperature_buffer[5];
@@ -121,7 +122,6 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
    else{
 
    }
-
    // print temperature on lcd
    displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
    // update latest temperature value
@@ -131,6 +131,7 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
 void update_PB0_gatt(uint8_t value){
   sl_status_t sc;
   PB0_pressed = value;
+
   // write to gatt_db
   sc = sl_bt_gatt_server_write_attribute_value(
         gattdb_button_state, // handle from autogen/gatt_db.h
@@ -164,6 +165,16 @@ void update_PB0_gatt(uint8_t value){
 
   }
 */
+}
+
+void waitForPB0Press(){
+  // loop until ISR sets this to true,if passkey_received
+  while(!ble_data.passkey_confirmed){
+      // ble_data.passkey_received is set to false in connection close
+      if(!ble_data.passkey_received){ // bonding failed or not requested
+          break;
+      }
+  }
 }
 #else
 // Private function, original from Dan Walkes. I fixed a sign extension bug.
@@ -207,6 +218,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
 #if DEVICE_IS_BLE_SERVER // for server states
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
   uint16_t characteristic;
+  uint32_t passkey;
 #else
   sl_bt_evt_scanner_legacy_advertisement_report_t scan_report;
   sl_bt_evt_gatt_procedure_completed_t gatt_completed;
@@ -281,6 +293,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
       // Display PB0 state
       updateAndDisplay_PB0gatt();
+
+      // update security manager, enable bonding
+      sl_bt_sm_configure(0x2F,   // bit 1 flag enables bonding
+                         sl_bt_sm_io_capability_displayyesno);
+
       break;
     // Indicates that a new connection was opened
     case sl_bt_evt_connection_opened_id:
@@ -317,6 +334,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.ok_to_send_htm_indications = false;
       ble_data.indication_in_flight = false;
       ble_data.connection_alive = false;
+      ble_data.passkey_received = false;
+      ble_data.passkey_confirmed = false;
 
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
@@ -335,6 +354,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
       displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
       // clear temperature on lcd
       displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
+      displayPrintf(DISPLAY_ROW_PASSKEY, "");
+      displayPrintf(DISPLAY_ROW_ACTION, "");
       break;
     // Triggered whenever the connection parameters are changed and at any
     // time a connection is established
@@ -404,13 +425,42 @@ void handle_ble_event(sl_bt_msg_t* evt){
       displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
       break;
     case sl_bt_evt_sm_confirm_bonding_id:
-      //sl_bt_sm_bonding_confirm(connection, confirm);
+      // accept bonding request
+      sc = sl_bt_sm_bonding_confirm(ble_data.connectionHandle, 1);
+      if (sc != SL_STATUS_OK){
+         LOG_ERROR("Error confirming BLE bonding, Error code: 0x%x\r\n", (uint16_t)sc);
+      }
+
       break;
     case sl_bt_evt_sm_confirm_passkey_id:
+      passkey = evt->data.evt_sm_confirm_passkey.passkey;
+      ble_data.passkey_received = true;
+      // display passkey
+      displayPrintf(DISPLAY_ROW_PASSKEY, "Passkey %06u", passkey);
+      displayPrintf(DISPLAY_ROW_ACTION, "Confirm with PB0");
+      waitForPB0Press();
+      sc = sl_bt_sm_passkey_confirm(ble_data.connectionHandle, 1);
+      if (sc != SL_STATUS_OK){
+         LOG_ERROR("Error confirming BLE passkey, Error code: 0x%x\r\n", (uint16_t)sc);
+      }
       break;
     case sl_bt_evt_sm_bonded_id:
+      displayPrintf(DISPLAY_ROW_CONNECTION, "Bonded");
+      displayPrintf(DISPLAY_ROW_PASSKEY, "");
+      displayPrintf(DISPLAY_ROW_ACTION, "");
+      // reset passkey flags
+      ble_data.passkey_received = false;
+      ble_data.passkey_confirmed = false;
+      NVIC_EnableIRQ(GPIO_EVEN_IRQn); // enable button presses again
       break;
     case sl_bt_evt_sm_bonding_failed_id:
+      LOG_ERROR("Bonding Failed\r\n");
+      // close connection and reset
+      sc = sl_bt_connection_close(ble_data.connectionHandle);
+      if (sc != SL_STATUS_OK){
+         LOG_ERROR("Error closing BLE connection, Error code: 0x%x\r\n", (uint16_t)sc);
+      }
+      // advertise data again
       break;
     default:
       break;
@@ -654,5 +704,4 @@ void handle_ble_event(sl_bt_msg_t* evt){
    }
 
 #endif
-
 }

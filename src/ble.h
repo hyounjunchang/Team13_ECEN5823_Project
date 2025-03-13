@@ -50,6 +50,8 @@ typedef struct {
 
   // values unique for server
   bool indication_in_flight;
+  bool passkey_received;
+  bool passkey_confirmed;
 
   // values unique for client
   bool gatt_service_found;
@@ -68,6 +70,7 @@ ble_data_struct_t* get_ble_data();
 #if DEVICE_IS_BLE_SERVER
 void update_temp_meas_gatt_and_send_indication(int temp_in_c); // update temperature gatt and send indicator
 void update_PB0_gatt(uint8_t value); // update PB0 value in gatt
+void waitForPB0Press();
 #endif
 // handles all ble events, different implementation for server and client
 void handle_ble_event(sl_bt_msg_t* evt);

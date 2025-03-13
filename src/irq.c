@@ -33,6 +33,8 @@
 // for I2C typedefs
 #include <em_i2c.h>
 
+#include "ble.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -125,5 +127,15 @@ void I2C0_IRQHandler(void) {
 void GPIO_EVEN_IRQHandler(){
   // set event
   NVIC_DisableIRQ(GPIO_EVEN_IRQn); // disable IRQ, otherwise it will continously trigger
-  set_scheduler_event(EVENT_PB0);
+  // if waiting for bonding, set the "flag"
+  CORE_DECLARE_IRQ_STATE;
+  CORE_ENTER_CRITICAL();
+  ble_data_struct_t* ble_info = get_ble_data();
+  if (ble_info->passkey_received){ // don't create event for PB0 confirmation... this causes event triggers otherwise...
+      ble_info->passkey_confirmed = true;
+  }
+  else{
+      set_scheduler_event(EVENT_PB0);
+  }
+  CORE_EXIT_CRITICAL();
 }
