@@ -394,18 +394,17 @@ void handle_ble_event(sl_bt_msg_t* evt){
       // CCCD changed
       if(gatt_server_char_status.status_flags & sl_bt_gatt_server_client_config){
           if (characteristic == gattdb_temperature_measurement){ // handle from gatt_db.h
-
               // indication flag
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_indication){
-                ble_data.ok_to_send_htm_indications = true;
-                // lcd temperature only updated when temperature measured
+                     ble_data.ok_to_send_htm_indications = true;
+                     // print temperature on lcd
+                     displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", latest_temp);
               }
               else{
-                ble_data.ok_to_send_htm_indications = false;
-                // clear temperature on lcd
-                displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
+                    ble_data.ok_to_send_htm_indications = false;
+                    // clear temperature on lcd
+                    displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
               }
-
               //LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);
           }
       }
@@ -430,7 +429,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       if (sc != SL_STATUS_OK){
          LOG_ERROR("Error confirming BLE bonding, Error code: 0x%x\r\n", (uint16_t)sc);
       }
-
       break;
     case sl_bt_evt_sm_confirm_passkey_id:
       passkey = evt->data.evt_sm_confirm_passkey.passkey;
