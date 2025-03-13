@@ -68,6 +68,9 @@ uint8_t *p = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
 
+uint8_t PB0_pressed = 0;
+uint8_t *PB0_pressed_ptr = &PB0_pressed;
+
 // for client, uuid in little-endian format
 uint8_t uuid_health_thermometer[2] = {0x09, 0x18};
 uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
@@ -89,7 +92,7 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
 
    // write to gatt_db
    sc = sl_bt_gatt_server_write_attribute_value(
-         gattdb_temperature_measurement, // handle from gatt_db.h
+         gattdb_temperature_measurement, // handle from autogen/gatt_db.h
          0, // offset
          5, // length
          &htm_temperature_buffer[0] // in IEEE-11073 format
@@ -97,7 +100,7 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
    if (sc != SL_STATUS_OK) {
        LOG_ERROR("Error setting GATT for temp measurement, Error Code: 0x%x\r\n", (uint16_t)sc);
    }
-   // send indication
+   // able to send indication
    if (ble_data.ok_to_send_htm_indications) {
        sc = sl_bt_gatt_server_send_indication(
          ble_data.connectionHandle,
@@ -115,11 +118,52 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
            //LOG_INFO("indication in flight\r\n");
        }
    }
+   else{
+
+   }
 
    // print temperature on lcd
    displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
    // update latest temperature value
    latest_temp = temp_in_c;
+}
+
+void update_PB0_gatt(uint8_t value){
+  sl_status_t sc;
+  PB0_pressed = value;
+  // write to gatt_db
+  sc = sl_bt_gatt_server_write_attribute_value(
+        gattdb_button_state, // handle from autogen/gatt_db.h
+        0, // offset
+        1, // length
+        PB0_pressed_ptr
+  );
+  if (sc != SL_STATUS_OK) {
+      LOG_ERROR("Error setting GATT for PB0, Error Code: 0x%x\r\n", (uint16_t)sc);
+  }
+/*
+  // able to send indication
+  if (ble_data.ok_to_send_htm_indications) {
+     sc = sl_bt_gatt_server_send_indication(
+       ble_data.connectionHandle,
+       gattdb_button_state, // handle from gatt_db.h
+       1,
+       &htm_temperature_buffer[0] // in IEEE-11073 format
+     );
+     if (sc != SL_STATUS_OK) {
+         LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
+         ble_data.indication_in_flight = false;
+     }
+     else {
+         //Set indication_in_flight flag
+         ble_data.indication_in_flight = true;
+         //LOG_INFO("indication in flight\r\n");
+     }
+  }
+  else{
+
+  }
+*/
 }
 #else
 // Private function, original from Dan Walkes. I fixed a sign extension bug.
@@ -183,6 +227,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
     // --------------------------------------------------------
     // Indicates that the device has started and the radio is ready
     case sl_bt_evt_system_boot_id:
+      // delete previous bonding
+      sc = sl_bt_sm_delete_bondings();
+      if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error deleting Bluetooth bondings, Error code: 0x%x\r\n", (uint16_t)sc);
+      }
       // handle boot event
       sc = sl_bt_system_get_identity_address(&ble_data.myAddress, &ble_data.myAddressType);
       if (sc != SL_STATUS_OK){
@@ -228,8 +277,10 @@ void handle_ble_event(sl_bt_msg_t* evt){
                     ble_addr[0], ble_addr[1], ble_addr[2],
                     ble_addr[3], ble_addr[4], ble_addr[5]);
       displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
-      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A7");
+      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A8");
 
+      // Display PB0 state
+      updateAndDisplay_PB0gatt();
       break;
     // Indicates that a new connection was opened
     case sl_bt_evt_connection_opened_id:
@@ -297,8 +348,12 @@ void handle_ble_event(sl_bt_msg_t* evt){
       LOG_INFO("Timeout(10ms): %d\r\n", bt_conn_param.timeout);
       */
       break;
+   // external events, only handles PB0 press here
     case sl_bt_evt_system_external_signal_id:
-      // si7021 state is kept in scheduler.c, so no action is taken here.
+      if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_FLAG){
+          updateAndDisplay_PB0gatt();
+          NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB0 event
+      }
       break;
     // ******************************************************
     // Events for Server

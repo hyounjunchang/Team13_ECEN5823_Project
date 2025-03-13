@@ -55,5 +55,6 @@ void gpioSensorEnSetOn();
 
 // PB0 button
 void gpioInit_PB0();
+unsigned int gpioRead_PB0();
 
 #endif /* SRC_GPIO_H_ */

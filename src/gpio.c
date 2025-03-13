@@ -124,7 +124,7 @@ void gpioPowerOn_SI7021(){
 
 void gpioInit_PB0(){
   // Set GPIO pin to input
-  GPIO_PinModeSet(PB0_port, PB0_pin, gpioModeInput, false);
+  GPIO_PinModeSet(PB0_port, PB0_pin, gpioModeInput, 1);
   // Configure the GPIO external pin interrupt for both edges, interrupt number 6
   GPIO_ExtIntConfig(PB0_port, PB0_pin, PB0_pin, true, true, true);
 }
@@ -183,6 +183,9 @@ void gpioSensorEnSetOn(){
   GPIO_PinOutSet(DISP_ENABLE_PORT, DISP_ENABLE_PIN);
 }
 
+unsigned int gpioRead_PB0(){
+  return GPIO_PinInGet(PB0_port, PB0_pin);
+}
 
 
 

@@ -124,5 +124,6 @@ void I2C0_IRQHandler(void) {
 
 void GPIO_EVEN_IRQHandler(){
   // set event
+  NVIC_DisableIRQ(GPIO_EVEN_IRQn); // disable IRQ, otherwise it will continously trigger
   set_scheduler_event(EVENT_PB0);
 }

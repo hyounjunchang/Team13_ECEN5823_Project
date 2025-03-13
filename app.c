@@ -207,7 +207,8 @@ SL_WEAK void app_init(void)
   // see: ./gecko_sdk_3.2.3/platform/CMSIS/Include/core_cm4.h for Gecko SDK 3.2.3
   NVIC_ClearPendingIRQ (LETIMER0_IRQn);
   NVIC_EnableIRQ(LETIMER0_IRQn); // config NVIC to take IRQs from LETIMER0
-
+  NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+  NVIC_EnableIRQ(GPIO_EVEN_IRQn); // config NVIC to take IRQs from GPIO
 } // app_init()
 
 

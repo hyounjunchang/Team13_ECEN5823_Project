@@ -23,18 +23,13 @@
 
 #include "autogen/gatt_db.h"
 
+#include "lcd.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-#if DEVICE_IS_BLE_SERVER == 1
-// Define bit-flags
-#define NO_FLAG 0x0
-#define BLE_LETIMER0_UF_FLAG 0x1
-#define BLE_LETIMER0_COMP1_FLAG 0x2
-#define BLE_I2C_TRANSFER_FLAG 0x4
-#define BLE_PB0_FLAG 0x8
-
+#if DEVICE_IS_BLE_SERVER
 static SI7021_state currState_SI7021 = SI7021_IDLE;
 #else
 static ble_client_state currState_client = CLIENT_BLE_OFF;
@@ -43,7 +38,6 @@ static ble_client_state currState_client = CLIENT_BLE_OFF;
 // edited from Lecture 6 slides
 // sets event flag for future use
 void set_scheduler_event(scheduler_event event){
-
 #if DEVICE_IS_BLE_SERVER
   sl_status_t sc;
   CORE_DECLARE_IRQ_STATE;
@@ -163,6 +157,21 @@ void temperature_state_machine(sl_bt_msg_t* evt){
       break;
   }
 }
+// Update GATT characteristic and display value
+void updateAndDisplay_PB0gatt(){
+  CORE_DECLARE_IRQ_STATE;
+  CORE_ENTER_CRITICAL();
+  unsigned int PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
+  if (PB0_val){
+      displayPrintf(DISPLAY_ROW_9, "Button Released");
+      update_PB0_gatt(0);
+  }
+  else{
+      displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+      update_PB0_gatt(1);
+  }
+  CORE_EXIT_CRITICAL();
+}
 #else
 ble_client_state get_client_state(){
   return currState_client;
@@ -220,3 +229,4 @@ void client_state_machine(sl_bt_msg_t* evt){
   }
 }
 #endif
+

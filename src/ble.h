@@ -26,6 +26,15 @@
 #define INT32_TO_FLOAT(m, e) ( (int32_t) (((uint32_t) m) & 0x00FFFFFFU) | (((uint32_t) e) << 24) )
 
 
+#if DEVICE_IS_BLE_SERVER
+// Define BLE bit-flags
+#define NO_FLAG 0x0
+#define BLE_LETIMER0_UF_FLAG 0x1
+#define BLE_LETIMER0_COMP1_FLAG 0x2
+#define BLE_I2C_TRANSFER_FLAG 0x4
+#define BLE_PB0_FLAG 0x8
+#endif
+
 // BLE Data Structure, save all of our private BT data in here.
 // Modern C (circa 2021 does it this way)
 // typedef ble_data_struct_t is referred to as an anonymous struct definition
@@ -53,10 +62,14 @@ typedef struct {
 // ble functions
 ble_data_struct_t* get_ble_data();
 
-#if DEVICE_IS_BLE_SERVER
-void update_temp_meas_gatt_and_send_indication(int temp_in_c); // update gatt and send indicator
-#endif
 
+
+
+#if DEVICE_IS_BLE_SERVER
+void update_temp_meas_gatt_and_send_indication(int temp_in_c); // update temperature gatt and send indicator
+void update_PB0_gatt(uint8_t value); // update PB0 value in gatt
+#endif
+// handles all ble events, different implementation for server and client
 void handle_ble_event(sl_bt_msg_t* evt);
 
 #endif
