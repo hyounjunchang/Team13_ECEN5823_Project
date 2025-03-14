@@ -57,7 +57,7 @@ typedef struct{
   uint16_t attribute;
   uint16_t offset;
   size_t value_len;
-  const uint8_t* value;
+  uint8_t* value;
 } ble_indications_struct_t;
 
 
@@ -80,7 +80,7 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
 #if DEVICE_IS_BLE_SERVER
 // buffer for sending values for server
 uint8_t htm_temperature_buffer[5];
-uint8_t *p = &htm_temperature_buffer[0];
+uint8_t *htm_temperature_ptr = &htm_temperature_buffer[0];
 uint32_t htm_temperature_flt;
 uint8_t flags = 0x00;
 
@@ -88,14 +88,20 @@ uint8_t PB0_pressed = 0;
 uint8_t *PB0_pressed_ptr = &PB0_pressed;
 
 // for indications queue
+ble_indications_struct_t ind_to_send;
+
 #define QUEUE_DEPTH 10
-ble_indications_struct_t ind_queue[QUEUE_DEPTH];
-uint8_t rd_index = 0;
-uint8_t wr_index = 0;
+ble_indications_struct_t ind_queue[QUEUE_DEPTH] = {{0, 0, 0, 0}};
+uint32_t rd_index = 0;
+uint32_t wr_index = 0;
+
+// to send indications via timer
+uint8_t lazy_timer_count = 0;
 
 // from Assignment 0.5
-static uint8_t nextIdx(uint8_t Idx) {
-  return (Idx + 1) % QUEUE_DEPTH;
+uint32_t nextIdx(uint32_t Idx) {
+  uint32_t new_idx = (Idx + 1) % QUEUE_DEPTH;
+  return new_idx;
 }
 
 void reset_queue (void) {
@@ -103,7 +109,7 @@ void reset_queue (void) {
   wr_index = 0;
 }
 
-uint8_t get_queue_depth() {
+uint32_t get_queue_depth() {
   // no "circling buffer"
   if( rd_index < wr_index ){
     return wr_index - rd_index;
@@ -136,13 +142,14 @@ bool queue_is_empty(){
   }
 }
 
-// returns true if able to add indication to queue
-bool add_indication_to_queue(ble_indications_struct_t indication){
-  // unable to add to queue
+bool add_indication_to_queue(ble_indications_struct_t *indication){
   if (queue_is_full()){
       return false;
   }
-  ind_queue[wr_index] = indication;
+  ind_queue[wr_index].attribute = indication->attribute;
+  ind_queue[wr_index].offset = indication->offset;
+  ind_queue[wr_index].value = indication->value;
+  ind_queue[wr_index].value_len = indication->value_len;
   wr_index = nextIdx(wr_index);
   return true;
 }
@@ -170,56 +177,112 @@ uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
 int latest_temp = 0;
 
 #if DEVICE_IS_BLE_SERVER
+#define FROM_INPUT true
+#define FROM_QUEUE false
+/*
+// sends indication, returns false if not able to, adds it to queue, if indication enabled
+// indication: pointer to indication data
+// from_input: send data from input, otherwise it is sent from queue
+ * return value: true if indication sent, false if added to queue or no indication sent
+ */
+bool send_indication(ble_indications_struct_t *indication, bool from_input){
+  sl_status_t sc;
+  // send from queue
+  if (from_input){
+      // do not send indication if not set
+      if (indication->attribute == gattdb_temperature_measurement &&
+          !ble_data.ok_to_send_htm_indications){
+          return false;
+      }
+      if (indication->attribute == gattdb_button_state &&
+          !ble_data.ok_to_send_PB0_indications){
+          return false;
+      }
+      // unable to send since indication full or queue exist, add to queue
+      if (ble_data.indication_in_flight ||
+          !queue_is_empty()){
+          add_indication_to_queue(indication);
+      }
+      // otherwise send indication
+      else{
+          ble_data.indication_in_flight = true;
+          // send indication
+          sc = sl_bt_gatt_server_write_attribute_value(
+              indication->attribute,
+              indication->offset,
+              indication->value_len,
+              indication->value
+          );
+          if (sc != SL_STATUS_OK) {
+              LOG_ERROR("Error sending GATT indication, Error Code: 0x%x\r\n", (uint16_t)sc);
+          }
+      }
+  }
+  // send indication from input
+  else{
+      bool success = remove_indication_from_queue(&ind_to_send);
+      if(success){
+          // not ok to send
+          if (ind_to_send.attribute == gattdb_temperature_measurement &&
+              !ble_data.ok_to_send_htm_indications){
+              return false;
+          }
+          if (ind_to_send.attribute == gattdb_button_state &&
+              !ble_data.ok_to_send_PB0_indications){
+              return false;
+          }
+          ble_data.indication_in_flight = true;
+          // send indication
+          sc = sl_bt_gatt_server_write_attribute_value(
+              ind_to_send.attribute,
+              ind_to_send.offset,
+              ind_to_send.value_len,
+              ind_to_send.value
+          );
+          if (sc != SL_STATUS_OK) {
+              LOG_ERROR("Error sending GATT indication, Error Code: 0x%x\r\n", (uint16_t)sc);
+          }
+      }
+  }
+  return true;
+}
+
 // Referenced from Lecture 10 slides
 void update_temp_meas_gatt_and_send_indication(int temp_in_c){
-   p = &htm_temperature_buffer[0]; // reset pointer, otherwise causes segmentation fault
-
-   sl_status_t sc;
+  sl_status_t sc;
+  htm_temperature_ptr = &htm_temperature_buffer[0]; // reset pointer, otherwise causes segmentation fault
 
   // convert temperature for bluetooth
-   UINT8_TO_BITSTREAM(p, flags); // insert the flags byte
-   htm_temperature_flt = INT32_TO_FLOAT(temp_in_c*1000, -3);
-   // insert the temperature measurement
-   UINT32_TO_BITSTREAM(p, htm_temperature_flt);
+  UINT8_TO_BITSTREAM(htm_temperature_ptr, flags); // insert the flags byte
+  htm_temperature_flt = INT32_TO_FLOAT(temp_in_c*1000, -3);
+  // insert the temperature measurement
+  UINT32_TO_BITSTREAM(htm_temperature_ptr, htm_temperature_flt);
 
-   // write to gatt_db
-   sc = sl_bt_gatt_server_write_attribute_value(
-         gattdb_temperature_measurement, // handle from autogen/gatt_db.h
-         0, // offset
-         5, // length
-         &htm_temperature_buffer[0] // in IEEE-11073 format
-   );
-   if (sc != SL_STATUS_OK) {
-       LOG_ERROR("Error setting GATT for temp measurement, Error Code: 0x%x\r\n", (uint16_t)sc);
-   }
-   // able to send indication
-   if (ble_data.ok_to_send_htm_indications) {
-       sc = sl_bt_gatt_server_send_indication(
-         ble_data.connectionHandle,
-         gattdb_temperature_measurement, // handle from gatt_db.h
-         5,
-         &htm_temperature_buffer[0] // in IEEE-11073 format
-       );
-       if (sc != SL_STATUS_OK) {
-           LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
-           ble_data.indication_in_flight = false;
-       }
-       else {
-           //Set indication_in_flight flag
-           ble_data.indication_in_flight = true;
-           //LOG_INFO("indication in flight\r\n");
-       }
-   }
-   else{
+  // write to gatt_db
+  sc = sl_bt_gatt_server_write_attribute_value(
+        gattdb_temperature_measurement, // handle from autogen/gatt_db.h
+        0, // offset
+        5, // length
+        htm_temperature_ptr
+  );
+  if (sc != SL_STATUS_OK) {
+      LOG_ERROR("Error setting GATT for HTM, Error Code: 0x%x\r\n", (uint16_t)sc);
+  }
 
-   }
+  // update indication to send
+  ind_to_send.attribute = gattdb_temperature_measurement;
+  ind_to_send.offset = 0;
+  ind_to_send.value_len = 5;
+  ind_to_send.value = htm_temperature_ptr; // in IEEE-11073 format
+  send_indication(&ind_to_send, FROM_INPUT);
+
    // print temperature on lcd
    displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
    // update latest temperature value
    latest_temp = temp_in_c;
 }
 
-void update_PB0_gatt(uint8_t value){
+void update_PB0_gatt_and_send_indication(uint8_t value){
   sl_status_t sc;
   PB0_pressed = value;
 
@@ -233,29 +296,13 @@ void update_PB0_gatt(uint8_t value){
   if (sc != SL_STATUS_OK) {
       LOG_ERROR("Error setting GATT for PB0, Error Code: 0x%x\r\n", (uint16_t)sc);
   }
-/*
-  // able to send indication
-  if (ble_data.ok_to_send_htm_indications) {
-     sc = sl_bt_gatt_server_send_indication(
-       ble_data.connectionHandle,
-       gattdb_button_state, // handle from gatt_db.h
-       1,
-       &htm_temperature_buffer[0] // in IEEE-11073 format
-     );
-     if (sc != SL_STATUS_OK) {
-         LOG_ERROR("Error Sending Indication, Error Code: 0x%x\r\n", (uint16_t)sc);
-         ble_data.indication_in_flight = false;
-     }
-     else {
-         //Set indication_in_flight flag
-         ble_data.indication_in_flight = true;
-         //LOG_INFO("indication in flight\r\n");
-     }
-  }
-  else{
 
-  }
-*/
+  // update indication to send
+  ind_to_send.attribute = gattdb_button_state;
+  ind_to_send.offset = 0;
+  ind_to_send.value_len = 1;
+  ind_to_send.value = PB0_pressed_ptr; // in IEEE-11073 format
+  send_indication(&ind_to_send, FROM_INPUT);
 }
 #else
 // Private function, original from Dan Walkes. I fixed a sign extension bug.
@@ -466,7 +513,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
     case sl_bt_evt_system_external_signal_id:
       if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_PRESS){
           displayPrintf(DISPLAY_ROW_9, "Button Pressed");
-          update_PB0_gatt(1);
+          update_PB0_gatt_and_send_indication(1); // does not send indication if not enabled
           // confirm BLE passkey if waiting
           if (ble_data.passkey_received){
               sc = sl_bt_sm_passkey_confirm(ble_data.connectionHandle, 1);
@@ -479,7 +526,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       }
       else if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_RELEASE){
           displayPrintf(DISPLAY_ROW_9, "Button Released");
-          update_PB0_gatt(0);
+          update_PB0_gatt_and_send_indication(0); // does not send indication if not enabled
           NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB0 event
       }
       break;
@@ -535,9 +582,19 @@ void handle_ble_event(sl_bt_msg_t* evt){
     case sl_bt_evt_gatt_server_indication_timeout_id:
       LOG_ERROR("Received Indication Timeout\r\n");
       break;
-    // Bluetooth soft timer interrupt (1 second)
+    // Bluetooth soft timer interrupt (200 ms)
     case sl_bt_evt_system_soft_timer_id:
-      displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
+      // send_indication() does not send indication if queue empty
+      send_indication(&ind_to_send, FROM_QUEUE);
+
+      // refresh LCD every 8 * 125ms
+      if (lazy_timer_count == 7){
+        displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
+        lazy_timer_count = 0;
+      }
+      else{
+          lazy_timer_count++;
+      }
       break;
     case sl_bt_evt_sm_confirm_bonding_id:
       // accept bonding request

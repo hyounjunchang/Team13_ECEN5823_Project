@@ -323,7 +323,8 @@ void displayInit()
 
 	  // using lazy soft timer instead
 	  // 32768 ticks = 1 second, slack = 100 ticks, handle = 0, repeat
-	  timer_response = sl_bt_system_set_lazy_soft_timer(32768, 100, 0, false);
+	  // update every 1/8 second
+	  timer_response = sl_bt_system_set_lazy_soft_timer(32768/8, 100, 0, false);
 	  if (timer_response != SL_STATUS_OK) {
 	      LOG_ERROR("Error setting up Bluetooth Soft Timer, Error code: 0x%x\r\n",
 	                (uint16_t)timer_response);
