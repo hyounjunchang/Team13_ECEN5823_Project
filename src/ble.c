@@ -104,7 +104,7 @@ uint32_t nextIdx(uint32_t Idx) {
   return new_idx;
 }
 
-void reset_queue (void) {
+void reset_queue() {
   rd_index = 0;
   wr_index = 0;
 }
@@ -480,6 +480,10 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.connection_alive = false;
       ble_data.passkey_received = false;
       ble_data.is_bonded = false;
+      // turn LED off
+      gpioLed0SetOff();
+      gpioLed1SetOff();
+      reset_queue();
 
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
@@ -554,24 +558,36 @@ void handle_ble_event(sl_bt_msg_t* evt){
           if (characteristic == gattdb_temperature_measurement){ // handle from gatt_db.h
               // indication flag
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_indication){
+                  if (ble_data.connection_alive){
                      ble_data.ok_to_send_htm_indications = true;
                      // print temperature on lcd
                      displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", latest_temp);
+                     gpioLed0SetOn();
+                  }
               }
               else{
+                  if(ble_data.connection_alive){
                     ble_data.ok_to_send_htm_indications = false;
                     // clear temperature on lcd
                     displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
+                    gpioLed0SetOff();
+                  }
               }
               //LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);
           }
           if (characteristic == gattdb_button_state){
               // indication flag
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_indication){
+                  if(ble_data.is_bonded){
                      ble_data.ok_to_send_PB0_indications= true;
+                     gpioLed1SetOn();
+                  }
               }
               else{
+                  if(ble_data.is_bonded){
                     ble_data.ok_to_send_PB0_indications = false;
+                    gpioLed1SetOff();
+                  }
               }
           }
       }
