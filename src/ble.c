@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <math.h>
 
+#include "gpio.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -56,7 +58,7 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .connection_alive = false,
                               .ok_to_send_htm_indications = false,
                               .passkey_received = false,
-                              .passkey_confirmed = false,
+                              .is_bonded = false,
                               .indication_in_flight = false,
                               .gatt_service_found = false,
                               .gatt_characteristic_found = false,
@@ -166,16 +168,6 @@ void update_PB0_gatt(uint8_t value){
   }
 */
 }
-
-void waitForPB0Press(){
-  // loop until ISR sets this to true,if passkey_received
-  while(!ble_data.passkey_confirmed){
-      // ble_data.passkey_received is set to false in connection close
-      if(!ble_data.passkey_received){ // bonding failed or not requested
-          break;
-      }
-  }
-}
 #else
 // Private function, original from Dan Walkes. I fixed a sign extension bug.
 // We'll need this for Client A7 assignment to convert health thermometer
@@ -219,6 +211,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
   uint16_t characteristic;
   uint32_t passkey;
+  unsigned int PB0_val;
 #else
   sl_bt_evt_scanner_legacy_advertisement_report_t scan_report;
   sl_bt_evt_gatt_procedure_completed_t gatt_completed;
@@ -292,7 +285,15 @@ void handle_ble_event(sl_bt_msg_t* evt){
       displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A8");
 
       // Display PB0 state
-      updateAndDisplay_PB0gatt();
+      PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
+      // low if pressed
+      if (PB0_val){
+          displayPrintf(DISPLAY_ROW_9, "Button Released");
+      }
+      else{
+          displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+      }
+
 
       // update security manager, enable bonding
       sl_bt_sm_configure(0x2F,   // bit 1 flag enables bonding
@@ -309,6 +310,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
          LOG_ERROR("Error stopping Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
 
+      /*
       // request sl_bt_connection parameter
       sc = sl_bt_connection_set_parameters(bt_conn_open.connection,
                                            CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL), // 75ms
@@ -321,6 +323,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       if (sc != SL_STATUS_OK){
          LOG_ERROR("Error requesting Bluetooth connection parameters, Error code: 0x%x\r\n", (uint16_t)sc);
       }
+      */
 
       ble_data.connectionHandle = bt_conn_open.connection;
       ble_data.connection_alive = true;
@@ -335,7 +338,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.indication_in_flight = false;
       ble_data.connection_alive = false;
       ble_data.passkey_received = false;
-      ble_data.passkey_confirmed = false;
+      ble_data.is_bonded = false;
 
       // handle close event
       sc = sl_bt_legacy_advertiser_generate_data(ble_data.advertisingSetHandle, \
@@ -371,8 +374,22 @@ void handle_ble_event(sl_bt_msg_t* evt){
       break;
    // external events, only handles PB0 press here
     case sl_bt_evt_system_external_signal_id:
-      if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_FLAG){
-          updateAndDisplay_PB0gatt();
+      if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_PRESS){
+          displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+          update_PB0_gatt(1);
+          // confirm BLE passkey if waiting
+          if (ble_data.passkey_received){
+              sc = sl_bt_sm_passkey_confirm(ble_data.connectionHandle, 1);
+              if (sc != SL_STATUS_OK){
+                 LOG_ERROR("Error confirming BLE passkey, Error code: 0x%x\r\n", (uint16_t)sc);
+              }
+              ble_data.passkey_received = false;
+          }
+          NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB0 event
+      }
+      else if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_RELEASE){
+          displayPrintf(DISPLAY_ROW_9, "Button Released");
+          update_PB0_gatt(0);
           NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB0 event
       }
       break;
@@ -436,19 +453,13 @@ void handle_ble_event(sl_bt_msg_t* evt){
       // display passkey
       displayPrintf(DISPLAY_ROW_PASSKEY, "Passkey %06u", passkey);
       displayPrintf(DISPLAY_ROW_ACTION, "Confirm with PB0");
-      waitForPB0Press();
-      sc = sl_bt_sm_passkey_confirm(ble_data.connectionHandle, 1);
-      if (sc != SL_STATUS_OK){
-         LOG_ERROR("Error confirming BLE passkey, Error code: 0x%x\r\n", (uint16_t)sc);
-      }
       break;
     case sl_bt_evt_sm_bonded_id:
       displayPrintf(DISPLAY_ROW_CONNECTION, "Bonded");
       displayPrintf(DISPLAY_ROW_PASSKEY, "");
       displayPrintf(DISPLAY_ROW_ACTION, "");
       // reset passkey flags
-      ble_data.passkey_received = false;
-      ble_data.passkey_confirmed = false;
+      ble_data.is_bonded = true;
       NVIC_EnableIRQ(GPIO_EVEN_IRQn); // enable button presses again
       break;
     case sl_bt_evt_sm_bonding_failed_id:
@@ -458,7 +469,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       if (sc != SL_STATUS_OK){
          LOG_ERROR("Error closing BLE connection, Error code: 0x%x\r\n", (uint16_t)sc);
       }
-      // advertise data again
       break;
     default:
       break;

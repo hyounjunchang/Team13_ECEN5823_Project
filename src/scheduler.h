@@ -60,8 +60,6 @@ void set_scheduler_event(scheduler_event event);
 SI7021_state get_SI7021_state();
 // temp state machine using ble event
 void temperature_state_machine(sl_bt_msg_t* evt);
-// Update and Print PB0 State, called from ble.c
-void updateAndDisplay_PB0gatt();
 #else // functions for client
 // for client state machine
 ble_client_state get_client_state();

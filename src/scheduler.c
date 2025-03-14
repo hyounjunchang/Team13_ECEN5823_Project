@@ -40,6 +40,7 @@ static ble_client_state currState_client = CLIENT_BLE_OFF;
 void set_scheduler_event(scheduler_event event){
 #if DEVICE_IS_BLE_SERVER
   sl_status_t sc;
+  unsigned int PB0_val;
   CORE_DECLARE_IRQ_STATE;
   switch (event){
     case NO_EVENT:
@@ -70,11 +71,22 @@ void set_scheduler_event(scheduler_event event){
       }
       break;
     case EVENT_PB0:
-      CORE_ENTER_CRITICAL();
-      sc = sl_bt_external_signal(BLE_PB0_FLAG);
-      CORE_EXIT_CRITICAL();
-      if (sc != SL_STATUS_OK){
-          LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+      PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
+      if (PB0_val){
+          CORE_ENTER_CRITICAL();
+          sc = sl_bt_external_signal(BLE_PB0_RELEASE);
+          CORE_EXIT_CRITICAL();
+          if (sc != SL_STATUS_OK){
+              LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+          }
+      }
+      else{
+          CORE_ENTER_CRITICAL();
+          sc = sl_bt_external_signal(BLE_PB0_PRESS);
+          CORE_EXIT_CRITICAL();
+          if (sc != SL_STATUS_OK){
+              LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+          }
       }
       break;
     default:
@@ -156,21 +168,6 @@ void temperature_state_machine(sl_bt_msg_t* evt){
     default:
       break;
   }
-}
-// Update GATT characteristic and display value
-void updateAndDisplay_PB0gatt(){
-  CORE_DECLARE_IRQ_STATE;
-  CORE_ENTER_CRITICAL();
-  unsigned int PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
-  if (PB0_val){
-      displayPrintf(DISPLAY_ROW_9, "Button Released");
-      update_PB0_gatt(0);
-  }
-  else{
-      displayPrintf(DISPLAY_ROW_9, "Button Pressed");
-      update_PB0_gatt(1);
-  }
-  CORE_EXIT_CRITICAL();
 }
 #else
 ble_client_state get_client_state(){
