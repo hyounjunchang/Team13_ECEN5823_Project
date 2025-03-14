@@ -52,11 +52,21 @@
 #define SCAN_WINDOW_MS_VAL 25
 
 
+// struct for indications queue
+typedef struct{
+  uint16_t attribute;
+  uint16_t offset;
+  size_t value_len;
+  const uint8_t* value;
+} ble_indications_struct_t;
+
+
 // BLE private data
 ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .advertisingSetHandle = 0, .connectionHandle = 0,
                               .connection_alive = false,
                               .ok_to_send_htm_indications = false,
+                              .ok_to_send_PB0_indications = false,
                               .passkey_received = false,
                               .is_bonded = false,
                               .indication_in_flight = false,
@@ -65,6 +75,9 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .htmServiceHandle = 0,
                               .tempMeasHandle = 0};
 
+
+// buffers for server
+#if DEVICE_IS_BLE_SERVER
 // buffer for sending values for server
 uint8_t htm_temperature_buffer[5];
 uint8_t *p = &htm_temperature_buffer[0];
@@ -74,9 +87,85 @@ uint8_t flags = 0x00;
 uint8_t PB0_pressed = 0;
 uint8_t *PB0_pressed_ptr = &PB0_pressed;
 
+// for indications queue
+#define QUEUE_DEPTH 10
+ble_indications_struct_t ind_queue[QUEUE_DEPTH];
+uint8_t rd_index = 0;
+uint8_t wr_index = 0;
+
+// from Assignment 0.5
+static uint8_t nextIdx(uint8_t Idx) {
+  return (Idx + 1) % QUEUE_DEPTH;
+}
+
+void reset_queue (void) {
+  rd_index = 0;
+  wr_index = 0;
+}
+
+uint8_t get_queue_depth() {
+  // no "circling buffer"
+  if( rd_index < wr_index ){
+    return wr_index - rd_index;
+  }
+  // buffer "circles" to index 0
+  else if (rd_index > wr_index){
+    return (QUEUE_DEPTH - rd_index) + wr_index;
+  }
+  // empty buffer
+  else{
+    return 0;
+  }
+}
+
+bool queue_is_full(){
+  if (nextIdx(wr_index) == rd_index){
+      return true;
+  }
+  else{
+      return false;
+  }
+}
+
+bool queue_is_empty(){
+  if (rd_index == wr_index){
+      return true;
+  }
+  else{
+      return false;
+  }
+}
+
+// returns true if able to add indication to queue
+bool add_indication_to_queue(ble_indications_struct_t indication){
+  // unable to add to queue
+  if (queue_is_full()){
+      return false;
+  }
+  ind_queue[wr_index] = indication;
+  wr_index = nextIdx(wr_index);
+  return true;
+}
+
+// returns false if queue empty, writes indication to indication_ptr if true
+bool remove_indication_from_queue(ble_indications_struct_t* indication_ptr){
+  if (queue_is_empty()){
+      return false;
+  }
+  // copy indication info
+  indication_ptr->attribute = ind_queue[rd_index].attribute;
+  indication_ptr->offset = ind_queue[rd_index].offset;
+  indication_ptr->value = ind_queue[rd_index].value;
+  indication_ptr->value_len = ind_queue[rd_index].value_len;
+
+  rd_index = nextIdx(rd_index);
+  return true;
+}
+#else
 // for client, uuid in little-endian format
 uint8_t uuid_health_thermometer[2] = {0x09, 0x18};
 uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
+#endif
 
 int latest_temp = 0;
 
@@ -335,6 +424,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
     case sl_bt_evt_connection_closed_id:
       // update states
       ble_data.ok_to_send_htm_indications = false;
+      ble_data.ok_to_send_PB0_indications = false;
       ble_data.indication_in_flight = false;
       ble_data.connection_alive = false;
       ble_data.passkey_received = false;
@@ -423,6 +513,15 @@ void handle_ble_event(sl_bt_msg_t* evt){
                     displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
               }
               //LOG_INFO("HTM_INDICATION CHANGED! Value: %x\r\n", gatt_server_char_status.client_config_flags);
+          }
+          if (characteristic == gattdb_button_state){
+              // indication flag
+              if (gatt_server_char_status.client_config_flags & sl_bt_gatt_indication){
+                     ble_data.ok_to_send_PB0_indications= true;
+              }
+              else{
+                    ble_data.ok_to_send_PB0_indications = false;
+              }
           }
       }
       // GATT indication received

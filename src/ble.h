@@ -48,6 +48,7 @@ typedef struct {
   uint8_t connectionHandle;
   bool connection_alive;
   bool ok_to_send_htm_indications;
+  bool ok_to_send_PB0_indications;
 
   // values unique for server
   bool indication_in_flight;
