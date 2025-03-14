@@ -202,17 +202,17 @@ bool send_indication(ble_indications_struct_t *indication, bool from_input){
       if (ble_data.indication_in_flight ||
           !queue_is_empty()){
           add_indication_to_queue(indication);
+          return false;
       }
       // otherwise send indication
       else{
           ble_data.indication_in_flight = true;
           // send indication
-          sc = sl_bt_gatt_server_write_attribute_value(
-              indication->attribute,
-              indication->offset,
+          sc = sl_bt_gatt_server_send_indication(
+              ble_data.connectionHandle,
+              indication->attribute, // from autogen/gattdb.h
               indication->value_len,
-              indication->value
-          );
+              indication->value);
           if (sc != SL_STATUS_OK) {
               LOG_ERROR("Error sending GATT indication, Error Code: 0x%x\r\n", (uint16_t)sc);
           }
@@ -221,6 +221,7 @@ bool send_indication(ble_indications_struct_t *indication, bool from_input){
   // send indication from input
   else{
       bool success = remove_indication_from_queue(&ind_to_send);
+      // removed from queue
       if(success){
           // not ok to send
           if (ind_to_send.attribute == gattdb_temperature_measurement &&
@@ -233,15 +234,18 @@ bool send_indication(ble_indications_struct_t *indication, bool from_input){
           }
           ble_data.indication_in_flight = true;
           // send indication
-          sc = sl_bt_gatt_server_write_attribute_value(
+          sc = sl_bt_gatt_server_send_indication(
+              ble_data.connectionHandle,
               ind_to_send.attribute,
-              ind_to_send.offset,
               ind_to_send.value_len,
-              ind_to_send.value
-          );
+              ind_to_send.value);
           if (sc != SL_STATUS_OK) {
               LOG_ERROR("Error sending GATT indication, Error Code: 0x%x\r\n", (uint16_t)sc);
           }
+      }
+      // queue empty
+      else{
+          return false;
       }
   }
   return true;
@@ -263,7 +267,7 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
         gattdb_temperature_measurement, // handle from autogen/gatt_db.h
         0, // offset
         5, // length
-        htm_temperature_ptr
+        &htm_temperature_buffer[0]
   );
   if (sc != SL_STATUS_OK) {
       LOG_ERROR("Error setting GATT for HTM, Error Code: 0x%x\r\n", (uint16_t)sc);
@@ -273,7 +277,7 @@ void update_temp_meas_gatt_and_send_indication(int temp_in_c){
   ind_to_send.attribute = gattdb_temperature_measurement;
   ind_to_send.offset = 0;
   ind_to_send.value_len = 5;
-  ind_to_send.value = htm_temperature_ptr; // in IEEE-11073 format
+  ind_to_send.value =  &htm_temperature_buffer[0]; // in IEEE-11073 format
   send_indication(&ind_to_send, FROM_INPUT);
 
    // print temperature on lcd
@@ -301,7 +305,7 @@ void update_PB0_gatt_and_send_indication(uint8_t value){
   ind_to_send.attribute = gattdb_button_state;
   ind_to_send.offset = 0;
   ind_to_send.value_len = 1;
-  ind_to_send.value = PB0_pressed_ptr; // in IEEE-11073 format
+  ind_to_send.value = PB0_pressed_ptr;
   send_indication(&ind_to_send, FROM_INPUT);
 }
 #else
