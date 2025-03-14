@@ -3,7 +3,7 @@
  * @brief     Task Scheduler for Blue Gecko, Keeps state of Si7021
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Mar 7, 2025
+ * @date      Mar 14, 2025
  *
  * @resources ECEN5823 Lecture 6 example code
  *

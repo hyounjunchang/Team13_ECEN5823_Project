@@ -53,6 +53,7 @@
  * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
  * Edit: Feb 26, 2025: 3 edits to lcd.c
+ *       Mar 14, 2025: changed soft timer to 125ms
 */
 
 
