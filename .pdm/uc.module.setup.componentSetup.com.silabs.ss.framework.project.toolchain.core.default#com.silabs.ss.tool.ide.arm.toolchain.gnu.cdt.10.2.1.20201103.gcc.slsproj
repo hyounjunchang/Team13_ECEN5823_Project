@@ -789,7 +789,7 @@
   <file name="readme_img2.png" linked="false" uri="studio:/project/readme_img2.png"/>
   <file name="readme_img3.png" linked="false" uri="studio:/project/readme_img3.png"/>
   <file name="readme_img4.png" linked="false" uri="studio:/project/readme_img4.png"/>
-  <file name="readme.html" linked="false" uri="file:/C:/Users/Hyounjun/Desktop/Applications/Simplicity%20Studio.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v3.2/app/bluetooth/documentation/example/soc_empty/readme.html"/>
+  <file name="readme.html" linked="false" uri="file:/C:/Users/hyoun/Desktop/Applications/Simplicity%20Studio.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v3.2/app/bluetooth/documentation/example/soc_empty/readme.html"/>
   <excludedPath>create_bl_files.bat</excludedPath>
   <excludedPath>create_bl_files.sh</excludedPath>
   <excludedPath>readme_img0.png</excludedPath>
