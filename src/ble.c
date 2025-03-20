@@ -73,7 +73,9 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .gatt_services_found = false,
                               .gatt_characteristics_found = false,
                               .htmServiceHandle = 0,
-                              .tempMeasHandle = 0};
+                              .tempMeasHandle = 0,
+                              .readReqInFlight = false,
+                              .PB0IndReqInFlight = false};
 
 
 // buffers for server
@@ -357,11 +359,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
   sl_status_t sc;
   sl_bt_evt_connection_opened_t bt_conn_open;
   //sl_bt_evt_connection_parameters_t bt_conn_param;
+  uint32_t passkey;
+  uint16_t characteristic;
 
 #if DEVICE_IS_BLE_SERVER // for server states
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
-  uint16_t characteristic;
-  uint32_t passkey;
   unsigned int PB0_val;
 #else
   sl_bt_evt_scanner_legacy_advertisement_report_t scan_report;
@@ -797,6 +799,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
        ble_data.ok_to_send_PB0_indications = false;
        ble_data.passkey_received = false;
        ble_data.is_bonded = false;
+       ble_data.readReqInFlight = false;
+       ble_data.PB0IndReqInFlight = false;
 
        // turn LED off
        gpioLed0SetOff();
@@ -806,6 +810,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
        displayPrintf(DISPLAY_ROW_CONNECTION, "Discovering");
        displayPrintf(DISPLAY_ROW_BTADDR2, "");
        displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
+       displayPrintf(DISPLAY_ROW_PASSKEY, "");
+       displayPrintf(DISPLAY_ROW_ACTION, "");
+       displayPrintf(DISPLAY_ROW_9, "");
 
        // start scanning for device
        sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
@@ -834,6 +841,15 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
        // GATT procedure successful
        if (sc == SL_STATUS_OK){
+           if (ble_data.PB0IndReqInFlight){
+               if(ble_data.ok_to_send_PB0_indications){
+                   gpioLed1SetOn();
+               }
+               else{
+                   gpioLed1SetOff();
+               }
+               ble_data.PB0IndReqInFlight = false;
+           }
            switch(client_state){
              case CLIENT_CHECK_GATT_SERVICE_1:
                sc = sl_bt_gatt_discover_primary_services_by_uuid(ble_data.connectionHandle,
@@ -855,7 +871,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
                    LOG_ERROR("Error discovering GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
                }
                break;
-             case CLIENT_CHECK_GATT_CHARACTERSTIC_1:
+             case CLIENT_CHECK_GATT_CHARACTERISTIC_1:
                sc = sl_bt_gatt_discover_characteristics_by_uuid(ble_data.connectionHandle,
                                                                 ble_data.buttonServiceHandle,
                                                                 16,
@@ -867,7 +883,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
                    ble_data.gatt_characteristics_found = true;
                }
                break;
-             case CLIENT_CHECK_GATT_CHARACTERSTIC_2:
+             case CLIENT_CHECK_GATT_CHARACTERISTIC_2:
                sc = sl_bt_gatt_set_characteristic_notification(ble_data.connectionHandle,
                                                                ble_data.tempMeasHandle,
                                                                sl_bt_gatt_indication);
@@ -884,6 +900,17 @@ void handle_ble_event(sl_bt_msg_t* evt){
                break;
            }
        }
+       // read request failed due to low encryption
+       else if (sc == SL_STATUS_BT_ATT_INSUFFICIENT_ENCRYPTION){
+           sc = sl_bt_sm_increase_security(ble_data.connectionHandle);
+           if (sc != SL_STATUS_OK){
+               LOG_ERROR("Error increasing BLE security, Error code: 0x%x\r\n", (uint16_t)sc);
+           }
+           // read req failed
+           if(ble_data.readReqInFlight){
+               ble_data.readReqInFlight = false;
+           }
+       }
        // GATT procedure failed
        else{
            switch(client_state){
@@ -891,8 +918,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
              case CLIENT_CHECK_GATT_SERVICE_2:
                LOG_ERROR("Error finding GATT service, Error code: 0x%x\r\n", (uint16_t)sc);
                break;
-             case CLIENT_CHECK_GATT_CHARACTERSTIC_1:
-             case CLIENT_CHECK_GATT_CHARACTERSTIC_2:
+             case CLIENT_CHECK_GATT_CHARACTERISTIC_1:
+             case CLIENT_CHECK_GATT_CHARACTERISTIC_2:
                LOG_ERROR("Error finding GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
                break;
              case CLIENT_SET_GATT_INDICATION:
@@ -922,29 +949,57 @@ void handle_ble_event(sl_bt_msg_t* evt){
        gatt_characteristic = evt->data.evt_gatt_characteristic;
        client_state = get_client_state();
 
-       if (client_state == CLIENT_CHECK_GATT_CHARACTERSTIC_1){
+       if (client_state == CLIENT_CHECK_GATT_CHARACTERISTIC_1){
            ble_data.tempMeasHandle = gatt_characteristic.characteristic;
        }
-       else if (client_state == CLIENT_CHECK_GATT_CHARACTERSTIC_2){
+       else if (client_state == CLIENT_CHECK_GATT_CHARACTERISTIC_2){
            ble_data.buttonStateHandle = gatt_characteristic.characteristic;
        }
        break;
-     // Indication or Notification has been received
+     // character value received from read or indication
      case sl_bt_evt_gatt_characteristic_value_id:
+       characteristic = evt->data.evt_gatt_characteristic_value.characteristic;
+       uint8_t att_opcode = evt->data.evt_gatt_characteristic_value.att_opcode;
        val_ptr = &(evt->data.evt_gatt_characteristic_value.value.data[0]);
-       int temperature = (int) FLOAT_TO_INT32(val_ptr);
+       uint8_t button_val;
 
-       // print temperature on lcd
-       displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temperature);
-       // update latest temperature value
-       latest_temp = temperature;
-
-       //LOG_INFO("Temp Update: %d\r\n", latest_temp);
-
-       // send confirmation for temperature indication
-       sc = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionHandle);
-       if (sc != SL_STATUS_OK){
-           LOG_ERROR("Error sending GATT indication confirmation, Error code: 0x%x\r\n", (uint16_t)sc);
+       // read request
+       if (att_opcode == sl_bt_gatt_read_response){
+           if (characteristic == ble_data.buttonStateHandle){
+               button_val = *val_ptr;
+               if (button_val){
+                   displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+               }
+               else{
+                   displayPrintf(DISPLAY_ROW_9, "Button Released");
+               }
+               ble_data.readReqInFlight = false;
+           }
+       }
+       // indication update
+       else if (att_opcode == sl_bt_gatt_handle_value_indication){
+         if (characteristic == ble_data.tempMeasHandle){
+           int temperature = (int) FLOAT_TO_INT32(val_ptr);
+           // print temperature on lcd
+           displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temperature);
+           // update latest temperature value
+           latest_temp = temperature;
+           //LOG_INFO("Temp Update: %d\r\n", latest_temp);
+         }
+         else if (characteristic == ble_data.buttonStateHandle){
+           button_val = *val_ptr;
+           if (button_val){
+               displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+           }
+           else{
+               displayPrintf(DISPLAY_ROW_9, "Button Released");
+           }
+         }
+         // send confirmation
+         sc = sl_bt_gatt_send_characteristic_confirmation(ble_data.connectionHandle);
+         if (sc != SL_STATUS_OK){
+             LOG_ERROR("Error sending GATT indication confirmation, Error code: 0x%x\r\n", (uint16_t)sc);
+         }
        }
        break;
      // external Bluetooth signals, for PB0/PB1 press
@@ -952,13 +1007,33 @@ void handle_ble_event(sl_bt_msg_t* evt){
        gatt_ext_signal = evt->data.evt_system_external_signal.extsignals;
        client_state = get_client_state();
 
-       /*
-       if (client_state != CLIENT_RECEIVE_TEMP_DATA){ // if everything not ready, don't send anything
-           goto ble_ext_update;
+       if (client_state < CLIENT_RECEIVE_TEMP_DATA){ // if everything not ready, don't send anything
+           goto enable_gpio_nvic;
        }
-       */
+
        if(gatt_ext_signal & BLE_PB0_PB1_RELEASE){
            last_both_button_pressed = true;
+           if (ble_data.ok_to_send_PB0_indications == false){
+             // set indication for button press
+             sc = sl_bt_gatt_set_characteristic_notification(ble_data.connectionHandle,
+                                                             ble_data.buttonStateHandle,
+                                                             sl_bt_gatt_indication);
+             if (sc != SL_STATUS_OK){
+                 LOG_ERROR("Error setting GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
+             }
+             ble_data.ok_to_send_PB0_indications = true;
+           }
+           else{
+               // clear indication for button press
+               sc = sl_bt_gatt_set_characteristic_notification(ble_data.connectionHandle,
+                                                               ble_data.buttonStateHandle,
+                                                               sl_bt_gatt_disable);
+               if (sc != SL_STATUS_OK){
+                   LOG_ERROR("Error clearing GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
+               }
+               ble_data.ok_to_send_PB0_indications = false;
+           }
+
        }
        else if(gatt_ext_signal & BLE_PB0_RELEASE){
            // ignore if last event was double press
@@ -967,12 +1042,29 @@ void handle_ble_event(sl_bt_msg_t* evt){
                goto enable_gpio_nvic;
            }
            last_both_button_pressed = false;
+           // Confirm bonding if waiting passkey
+           if (ble_data.passkey_received){
+               sc = sl_bt_sm_passkey_confirm(ble_data.connectionHandle, 1);
+               if (sc != SL_STATUS_OK){
+                  LOG_ERROR("Error confirming BLE passkey, Error code: 0x%x\r\n", (uint16_t)sc);
+               }
+               ble_data.passkey_received = false;
+           }
        }
        else if(gatt_ext_signal & BLE_PB1_RELEASE){
            // ignore if last event was double press
            if (last_both_button_pressed){
                last_both_button_pressed = false;
                goto enable_gpio_nvic;
+           }
+           // send read reqeust for buttonState
+           if (!ble_data.readReqInFlight){
+             sc = sl_bt_gatt_read_characteristic_value(ble_data.connectionHandle,
+                                                       ble_data.buttonStateHandle);
+             if (sc != SL_STATUS_OK){
+                 LOG_ERROR("Error sending GATT indication confirmation, Error code: 0x%x\r\n", (uint16_t)sc);
+             }
+             ble_data.readReqInFlight = true;
            }
            last_both_button_pressed = false;
        }
@@ -982,6 +1074,35 @@ void handle_ble_event(sl_bt_msg_t* evt){
      // Bluetooth soft timer interrupt (1 second)
      case sl_bt_evt_system_soft_timer_id:
        displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
+       break;
+     case sl_bt_evt_sm_confirm_bonding_id:
+       // accept bonding request
+       sc = sl_bt_sm_bonding_confirm(ble_data.connectionHandle, 1);
+       if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error confirming BLE bonding, Error code: 0x%x\r\n", (uint16_t)sc);
+       }
+       break;
+     case sl_bt_evt_sm_confirm_passkey_id:
+       passkey = evt->data.evt_sm_confirm_passkey.passkey;
+       ble_data.passkey_received = true;
+       // display passkey
+       displayPrintf(DISPLAY_ROW_PASSKEY, "Passkey %06u", passkey);
+       displayPrintf(DISPLAY_ROW_ACTION, "Confirm with PB0");
+       break;
+     case sl_bt_evt_sm_bonded_id:
+       displayPrintf(DISPLAY_ROW_CONNECTION, "Bonded");
+       displayPrintf(DISPLAY_ROW_PASSKEY, "");
+       displayPrintf(DISPLAY_ROW_ACTION, "");
+       // reset passkey flags
+       ble_data.is_bonded = true;
+       break;
+     case sl_bt_evt_sm_bonding_failed_id:
+       LOG_ERROR("Bonding Failed\r\n");
+       // close connection and reset
+       sc = sl_bt_connection_close(ble_data.connectionHandle);
+       if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error closing BLE connection, Error code: 0x%x\r\n", (uint16_t)sc);
+       }
        break;
      default:
        break;

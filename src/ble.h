@@ -65,6 +65,8 @@ typedef struct {
   uint16_t tempMeasHandle;
   uint32_t buttonServiceHandle;
   uint16_t buttonStateHandle;
+  bool readReqInFlight;
+  bool PB0IndReqInFlight;
 
 } ble_data_struct_t;
 

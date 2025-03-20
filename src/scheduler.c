@@ -267,16 +267,16 @@ void client_state_machine(sl_bt_msg_t* evt){
     case CLIENT_CHECK_GATT_SERVICE_2:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
           if (ble_data_ptr->gatt_services_found){
-              currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC_1;
+              currState_client = CLIENT_CHECK_GATT_CHARACTERISTIC_1;
           }
       }
       break;
-    case CLIENT_CHECK_GATT_CHARACTERSTIC_1:
+    case CLIENT_CHECK_GATT_CHARACTERISTIC_1:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
-          currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC_2;
+          currState_client = CLIENT_CHECK_GATT_CHARACTERISTIC_2;
       }
       break;
-    case CLIENT_CHECK_GATT_CHARACTERSTIC_2:
+    case CLIENT_CHECK_GATT_CHARACTERISTIC_2:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
           if (ble_data_ptr->gatt_characteristics_found){
               currState_client = CLIENT_SET_GATT_INDICATION;
