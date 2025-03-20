@@ -155,7 +155,7 @@ void set_scheduler_event(scheduler_event event){
       CORE_EXIT_CRITICAL();
 
       if (sc != SL_STATUS_OK){
-          LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+          LOG_ERROR("Error setting BLE_PB_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
 
       break;

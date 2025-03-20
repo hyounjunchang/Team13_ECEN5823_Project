@@ -191,12 +191,13 @@ SL_WEAK void app_init(void)
 
   initialize_oscillators();
   init_LETIMER0();
+  gpioInit();
 
 // server uses GPIO, and I2C
 #if DEVICE_IS_BLE_SERVER
-  gpioInit();
   initialize_I2C();
 #endif
+
 
   #ifdef TEST_MODE
     gpioInit_LED();

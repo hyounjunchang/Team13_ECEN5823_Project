@@ -181,6 +181,8 @@ uint8_t uuid_button_service[16] = {0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65,
 uint8_t uuid_button_state[16] = {0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65,
                                    0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38,
                                    0x2, 0x0 ,0x0, 0x0};
+// for handling button presses
+bool last_both_button_pressed = false;
 #endif
 
 int latest_temp = 0;
@@ -369,7 +371,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
   uint8_t *val_ptr;
   uint32_t gatt_ext_signal;
   ble_client_state client_state = CLIENT_BLE_OFF;
-  uint32_t last_ble_ext_evt_flags = NO_FLAG;
 #endif
 
 #if DEVICE_IS_BLE_SERVER
@@ -951,25 +952,32 @@ void handle_ble_event(sl_bt_msg_t* evt){
        gatt_ext_signal = evt->data.evt_system_external_signal.extsignals;
        client_state = get_client_state();
 
+       /*
        if (client_state != CLIENT_RECEIVE_TEMP_DATA){ // if everything not ready, don't send anything
-           break;
+           goto ble_ext_update;
        }
-       if(gatt_ext_signal & BLE_PB0_RELEASE){
-           if (last_ble_ext_evt_flags & BLE_PB0_PB1_RELEASE){
-               break;
-           }
-           break;
-       }
-       if(gatt_ext_signal & BLE_PB1_RELEASE){
-           if (last_ble_ext_evt_flags & BLE_PB0_PB1_RELEASE){
-               break;
-           }
-           break;
-       }
+       */
        if(gatt_ext_signal & BLE_PB0_PB1_RELEASE){
-           break;
+           last_both_button_pressed = true;
        }
-       last_ble_ext_evt_flags = gatt_ext_signal;
+       else if(gatt_ext_signal & BLE_PB0_RELEASE){
+           // ignore if last event was double press
+           if (last_both_button_pressed){
+               last_both_button_pressed = false;
+               goto enable_gpio_nvic;
+           }
+           last_both_button_pressed = false;
+       }
+       else if(gatt_ext_signal & BLE_PB1_RELEASE){
+           // ignore if last event was double press
+           if (last_both_button_pressed){
+               last_both_button_pressed = false;
+               goto enable_gpio_nvic;
+           }
+           last_both_button_pressed = false;
+       }
+     enable_gpio_nvic:
+       NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB event
        break;
      // Bluetooth soft timer interrupt (1 second)
      case sl_bt_evt_system_soft_timer_id:
