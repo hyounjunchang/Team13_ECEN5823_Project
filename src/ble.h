@@ -26,7 +26,6 @@
 #define INT32_TO_FLOAT(m, e) ( (int32_t) (((uint32_t) m) & 0x00FFFFFFU) | (((uint32_t) e) << 24) )
 
 
-#if DEVICE_IS_BLE_SERVER
 // Define BLE bit-flags
 #define NO_FLAG 0x0
 #define BLE_LETIMER0_UF_FLAG 0x1
@@ -34,7 +33,11 @@
 #define BLE_I2C_TRANSFER_FLAG 0x4
 #define BLE_PB0_PRESS 0x8
 #define BLE_PB0_RELEASE 0x10
-#endif
+#define BLE_PB1_PRESS 0x20 // gatt read request if client
+#define BLE_PB1_RELEASE 0x40
+#define BLE_PB0_PB1_PRESS 0x80
+#define BLE_PB0_PB1_RELEASE 0x100 // set button indication if client
+#define BLE_PB_UNDEFINED 0x200
 
 // BLE Data Structure, save all of our private BT data in here.
 // Modern C (circa 2021 does it this way)
@@ -65,9 +68,6 @@ typedef struct {
 
 // ble functions
 ble_data_struct_t* get_ble_data();
-
-
-
 
 #if DEVICE_IS_BLE_SERVER
 void update_temp_meas_gatt_and_send_indication(int temp_in_c); // update temperature gatt and send indicator

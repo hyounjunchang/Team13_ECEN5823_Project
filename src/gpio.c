@@ -67,12 +67,19 @@
 #define PB0_port gpioPortF
 #define PB0_pin 6 // PF6
 
+#define PB1_port gpioPortF
+#define PB1_pin 7
+
 // called during boot_up in app.c
 void gpioInit()
 {
   gpioInit_SI7021();
   gpioInit_LED();
   gpioInit_PB0();
+  #if DEVICE_IS_SERVER == 0
+    gpioInit_PB1();
+  #endif
+
 } // gpioInit()
 
 void gpioInit_LED(){
@@ -88,7 +95,6 @@ void gpioInit_LED(){
   // clear LED0 and LED1 for initialization
   GPIO_PinOutClear(LED_port, LED0_pin);
   GPIO_PinOutClear(LED_port, LED1_pin);
-
 }
 
 // Initializes SI7021, must be called on initialization to power on the port
@@ -127,6 +133,13 @@ void gpioInit_PB0(){
   GPIO_PinModeSet(PB0_port, PB0_pin, gpioModeInput, 1);
   // Configure the GPIO external pin interrupt for both edges, interrupt number 6
   GPIO_ExtIntConfig(PB0_port, PB0_pin, PB0_pin, true, true, true);
+}
+
+void gpioInit_PB1(){
+  // Set GPIO pin to input
+  GPIO_PinModeSet(PB1_port, PB1_pin, gpioModeInput, 1);
+  // interrupt
+  GPIO_ExtIntConfig(PB1_port, PB1_pin, PB1_pin, true, true, true);
 }
 
 // Referenced from Lecture 6
@@ -187,5 +200,6 @@ unsigned int gpioRead_PB0(){
   return GPIO_PinInGet(PB0_port, PB0_pin);
 }
 
-
-
+unsigned int gpioRead_PB1(){
+  return GPIO_PinInGet(PB1_port, PB1_pin);
+}

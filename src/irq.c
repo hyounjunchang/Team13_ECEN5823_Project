@@ -130,6 +130,6 @@ void GPIO_EVEN_IRQHandler(){
   // if waiting for bonding, set the "flag"
   CORE_DECLARE_IRQ_STATE;
   CORE_ENTER_CRITICAL();
-  set_scheduler_event(EVENT_PB0);
+  set_scheduler_event(EVENT_PB);
   CORE_EXIT_CRITICAL();
 }

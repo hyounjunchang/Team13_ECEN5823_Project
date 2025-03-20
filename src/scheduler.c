@@ -33,6 +33,10 @@
 static SI7021_state currState_SI7021 = SI7021_IDLE;
 #else
 static ble_client_state currState_client = CLIENT_BLE_OFF;
+
+unsigned int last_PB0_val = 1; // not pressed
+unsigned int last_PB1_val = 1;
+bool button_indication_sent = false;
 #endif
 
 // edited from Lecture 6 slides
@@ -70,7 +74,7 @@ void set_scheduler_event(scheduler_event event){
           LOG_ERROR("Error setting BLE_LETIMER0_UF_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
-    case EVENT_PB0:
+    case EVENT_PB:
       PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
       if (PB0_val){
           CORE_ENTER_CRITICAL();
@@ -93,8 +97,68 @@ void set_scheduler_event(scheduler_event event){
       break;
   }
 #else
-  // just to remove compiler warnings
+  sl_status_t sc;
+  unsigned int PB0_val, PB1_val;
+  CORE_DECLARE_IRQ_STATE;
   switch (event){
+    case EVENT_PB:
+      PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
+      PB1_val = gpioRead_PB1();
+
+      CORE_ENTER_CRITICAL();
+      if (PB0_val == 0 && PB1_val == 0){ // both pressed
+          if (last_PB0_val == 0  && last_PB1_val == 0){
+              sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
+          }
+          else{
+              sc = sl_bt_external_signal(BLE_PB0_PB1_PRESS);
+          }
+      }
+      else if (PB0_val == 0 && PB1_val == 1){ // only PB0 pressed
+          if (last_PB0_val == 1 && last_PB1_val == 1){
+              sc = sl_bt_external_signal(BLE_PB0_PRESS);
+          }
+          else if (last_PB0_val == 0 && last_PB1_val == 0){ // release for button indication
+              sc = sl_bt_external_signal(BLE_PB0_PB1_RELEASE);
+          }
+          else{
+              sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
+          }
+      }
+      else if (PB0_val == 1 && PB1_val == 0){ // only PB1 pressed
+          if (last_PB0_val == 1 && last_PB1_val == 1){
+              sc = sl_bt_external_signal(BLE_PB1_PRESS);
+          }
+          else if (last_PB0_val == 0 && last_PB1_val == 0){ // release for button indication
+              sc = sl_bt_external_signal(BLE_PB0_PB1_RELEASE);
+          }
+          else{
+              sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
+          }
+      }
+      else{ // both released
+          if (last_PB0_val == 0 && last_PB1_val == 1){
+            sc = sl_bt_external_signal(BLE_PB0_RELEASE);
+          }
+          else if (last_PB0_val == 1 && last_PB1_val == 0){
+            sc = sl_bt_external_signal(BLE_PB1_RELEASE);
+          }
+          else if (last_PB0_val == 0 && last_PB1_val == 0){
+            sc = sl_bt_external_signal(BLE_PB0_PB1_RELEASE);
+          }
+          else{
+            sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
+          }
+      }
+      last_PB0_val = PB0_val;
+      last_PB1_val = PB1_val;
+      CORE_EXIT_CRITICAL();
+
+      if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+      }
+
+      break;
     default:
       break;
   }
