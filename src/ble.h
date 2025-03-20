@@ -52,17 +52,19 @@ typedef struct {
   bool connection_alive;
   bool ok_to_send_htm_indications;
   bool ok_to_send_PB0_indications;
-
-  // values unique for server
-  bool indication_in_flight;
   bool passkey_received;
   bool is_bonded;
 
+  // values unique for server
+  bool indication_in_flight;
+
   // values unique for client
-  bool gatt_service_found;
-  bool gatt_characteristic_found;
+  bool gatt_services_found;
+  bool gatt_characteristics_found;
   uint32_t htmServiceHandle;
   uint16_t tempMeasHandle;
+  uint32_t buttonServiceHandle;
+  uint16_t buttonStateHandle;
 
 } ble_data_struct_t;
 

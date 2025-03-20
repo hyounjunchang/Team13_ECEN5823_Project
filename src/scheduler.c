@@ -256,19 +256,29 @@ void client_state_machine(sl_bt_msg_t* evt){
       break;
     case CLIENT_SCANNING:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_connection_opened_id){
-          currState_client = CLIENT_CHECK_GATT_SERVICE;
+          currState_client = CLIENT_CHECK_GATT_SERVICE_1;
       }
       break;
-    case CLIENT_CHECK_GATT_SERVICE:
+    case CLIENT_CHECK_GATT_SERVICE_1:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
-          if (ble_data_ptr->gatt_service_found){
-              currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC;
+          currState_client = CLIENT_CHECK_GATT_SERVICE_2;
+      }
+      break;
+    case CLIENT_CHECK_GATT_SERVICE_2:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
+          if (ble_data_ptr->gatt_services_found){
+              currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC_1;
           }
       }
       break;
-    case CLIENT_CHECK_GATT_CHARACTERSTIC:
+    case CLIENT_CHECK_GATT_CHARACTERSTIC_1:
       if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
-          if (ble_data_ptr->gatt_characteristic_found){
+          currState_client = CLIENT_CHECK_GATT_CHARACTERSTIC_2;
+      }
+      break;
+    case CLIENT_CHECK_GATT_CHARACTERSTIC_2:
+      if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_gatt_procedure_completed_id){
+          if (ble_data_ptr->gatt_characteristics_found){
               currState_client = CLIENT_SET_GATT_INDICATION;
           }
       }
