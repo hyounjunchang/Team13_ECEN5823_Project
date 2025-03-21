@@ -3,7 +3,7 @@
  * @brief     BLE module for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Mar 14, 2025
+ * @date      Mar 20, 2025
  *
  * @resources Lecture 10
  *

@@ -18,8 +18,8 @@
  * Student edit: Add your name and email address here:
  * @student    Hyounjun Chang, hyounjun.chang@colorado.edu
  *
-   Editor: Feb 13, 2025 Hyounjun Chang
- * Change: updated GPIO assignment for SI7021, I2C
+   Editor: Mar 20, 2025 Hyounjun Chang
+ * Change: updated GPIO assignment for SI7021, I2C, GPIO
  */
 
 
