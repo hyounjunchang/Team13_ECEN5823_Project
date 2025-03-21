@@ -1006,14 +1006,14 @@ void handle_ble_event(sl_bt_msg_t* evt){
        gatt_ext_signal = evt->data.evt_system_external_signal.extsignals;
        client_state = get_client_state();
 
-       /*
-       if (client_state < CLIENT_RECEIVE_TEMP_DATA){ // if everything not ready, don't send anything
+       // if everything not ready, don't send anything
+       if (client_state < CLIENT_RECEIVE_TEMP_DATA){
            break;
        }
-       */
 
        if(gatt_ext_signal & BLE_PB0_PB1_RELEASE){
            last_both_button_pressed = true;
+           // do not send indication request if not bonded
            if (!ble_data.is_bonded) {
                break;
            }
@@ -1037,9 +1037,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
                if (sc != SL_STATUS_OK){
                    LOG_ERROR("Error clearing GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
                }
+               ble_data.PB0IndReqInFlight = true;
                ble_data.ok_to_send_PB0_indications = false;
            }
-
        }
        else if(gatt_ext_signal & BLE_PB0_RELEASE){
            // ignore if last event was double press
