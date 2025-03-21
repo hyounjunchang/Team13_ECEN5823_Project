@@ -54,10 +54,8 @@ void gpioSetDisplayExtcomin(bool extcomin);
 void gpioSensorEnSetOn();
 
 // PB0 button
-void gpioInit_PB0();
+void gpioInit_PB();
 unsigned int gpioRead_PB0();
-
-void gpioInit_PB1();
 unsigned int gpioRead_PB1();
 
 #endif /* SRC_GPIO_H_ */

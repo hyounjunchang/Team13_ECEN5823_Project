@@ -38,6 +38,7 @@
 #define BLE_PB0_PB1_PRESS 0x80
 #define BLE_PB0_PB1_RELEASE 0x100 // set button indication if client
 #define BLE_PB_UNDEFINED 0x200
+#define BLE_PB_MASK 0x3F8
 
 // BLE Data Structure, save all of our private BT data in here.
 // Modern C (circa 2021 does it this way)

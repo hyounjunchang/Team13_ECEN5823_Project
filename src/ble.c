@@ -543,12 +543,10 @@ void handle_ble_event(sl_bt_msg_t* evt){
               }
               ble_data.passkey_received = false;
           }
-          NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB0 event
       }
       else if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_RELEASE){
           displayPrintf(DISPLAY_ROW_9, "Button Released");
           update_PB0_gatt_and_send_indication(0); // does not send indication if not enabled
-          NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB0 event
       }
       break;
     // ******************************************************
@@ -649,7 +647,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       displayPrintf(DISPLAY_ROW_ACTION, "");
       // reset passkey flags
       ble_data.is_bonded = true;
-      NVIC_EnableIRQ(GPIO_EVEN_IRQn); // enable button presses again
       break;
     case sl_bt_evt_sm_bonding_failed_id:
       LOG_ERROR("Bonding Failed\r\n");
@@ -841,15 +838,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
        // GATT procedure successful
        if (sc == SL_STATUS_OK){
-           if (ble_data.PB0IndReqInFlight){
-               if(ble_data.ok_to_send_PB0_indications){
-                   gpioLed1SetOn();
-               }
-               else{
-                   gpioLed1SetOff();
-               }
-               ble_data.PB0IndReqInFlight = false;
-           }
            switch(client_state){
              case CLIENT_CHECK_GATT_SERVICE_1:
                sc = sl_bt_gatt_discover_primary_services_by_uuid(ble_data.connectionHandle,
@@ -895,6 +883,17 @@ void handle_ble_event(sl_bt_msg_t* evt){
                ble_data.ok_to_send_htm_indications = true;
                displayPrintf(DISPLAY_ROW_CONNECTION, "Handling Indications");
                gpioLed0SetOn();
+               break;
+             case CLIENT_RECEIVE_TEMP_DATA:
+               if (ble_data.PB0IndReqInFlight){
+                   if(ble_data.ok_to_send_PB0_indications){
+                       gpioLed1SetOn();
+                   }
+                   else{
+                       gpioLed1SetOff();
+                   }
+                   ble_data.PB0IndReqInFlight = false;
+               }
                break;
              default:
                break;
@@ -1007,12 +1006,18 @@ void handle_ble_event(sl_bt_msg_t* evt){
        gatt_ext_signal = evt->data.evt_system_external_signal.extsignals;
        client_state = get_client_state();
 
+       /*
        if (client_state < CLIENT_RECEIVE_TEMP_DATA){ // if everything not ready, don't send anything
-           goto enable_gpio_nvic;
+           break;
        }
+       */
 
        if(gatt_ext_signal & BLE_PB0_PB1_RELEASE){
            last_both_button_pressed = true;
+           if (!ble_data.is_bonded) {
+               break;
+           }
+
            if (ble_data.ok_to_send_PB0_indications == false){
              // set indication for button press
              sc = sl_bt_gatt_set_characteristic_notification(ble_data.connectionHandle,
@@ -1021,6 +1026,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
              if (sc != SL_STATUS_OK){
                  LOG_ERROR("Error setting GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
              }
+             ble_data.PB0IndReqInFlight = true;
              ble_data.ok_to_send_PB0_indications = true;
            }
            else{
@@ -1039,7 +1045,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
            // ignore if last event was double press
            if (last_both_button_pressed){
                last_both_button_pressed = false;
-               goto enable_gpio_nvic;
+               break;
            }
            last_both_button_pressed = false;
            // Confirm bonding if waiting passkey
@@ -1052,11 +1058,13 @@ void handle_ble_event(sl_bt_msg_t* evt){
            }
        }
        else if(gatt_ext_signal & BLE_PB1_RELEASE){
+
            // ignore if last event was double press
            if (last_both_button_pressed){
                last_both_button_pressed = false;
-               goto enable_gpio_nvic;
+               break;
            }
+           last_both_button_pressed = false;
            // send read reqeust for buttonState
            if (!ble_data.readReqInFlight){
              sc = sl_bt_gatt_read_characteristic_value(ble_data.connectionHandle,
@@ -1066,10 +1074,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
              }
              ble_data.readReqInFlight = true;
            }
-           last_both_button_pressed = false;
        }
-     enable_gpio_nvic:
-       NVIC_EnableIRQ(GPIO_EVEN_IRQn); // re-enable for next PB event
        break;
      // Bluetooth soft timer interrupt (1 second)
      case sl_bt_evt_system_soft_timer_id:

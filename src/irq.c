@@ -123,11 +123,15 @@ void I2C0_IRQHandler(void) {
   }
 } // I2C0_IRQHandler()
 
-
 void GPIO_EVEN_IRQHandler(){
+  // step 1: determine pending interrupts in peripheral
+  uint32_t interrupt_flags = GPIO_IntGetEnabled();
+
+  // step 2: clear pending interrupts in peripheral
+  GPIO_IntClear(interrupt_flags);
+
+  // step 3: your handling code
   // set event
-  NVIC_DisableIRQ(GPIO_EVEN_IRQn); // disable IRQ, otherwise it will continously trigger
-  // if waiting for bonding, set the "flag"
   CORE_DECLARE_IRQ_STATE;
   CORE_ENTER_CRITICAL();
   set_scheduler_event(EVENT_PB);

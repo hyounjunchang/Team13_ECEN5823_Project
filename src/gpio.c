@@ -70,16 +70,16 @@
 #define PB1_port gpioPortF
 #define PB1_pin 7
 
+// Include logging for this file
+#define INCLUDE_LOG_DEBUG 1
+#include "src/log.h"
+
 // called during boot_up in app.c
 void gpioInit()
 {
   gpioInit_SI7021();
   gpioInit_LED();
-  gpioInit_PB0();
-  #if DEVICE_IS_SERVER == 0
-    gpioInit_PB1();
-  #endif
-
+  gpioInit_PB();
 } // gpioInit()
 
 void gpioInit_LED(){
@@ -128,18 +128,17 @@ void gpioPowerOn_SI7021(){
   // 5- If using interrupts, enable NVIC interrupts for the device
 }
 
-void gpioInit_PB0(){
+void gpioInit_PB(){
   // Set GPIO pin to input
   GPIO_PinModeSet(PB0_port, PB0_pin, gpioModeInput, 1);
-  // Configure the GPIO external pin interrupt for both edges, interrupt number 6
-  GPIO_ExtIntConfig(PB0_port, PB0_pin, PB0_pin, true, true, true);
-}
-
-void gpioInit_PB1(){
-  // Set GPIO pin to input
-  GPIO_PinModeSet(PB1_port, PB1_pin, gpioModeInput, 1);
-  // interrupt
-  GPIO_ExtIntConfig(PB1_port, PB1_pin, PB1_pin, true, true, true);
+  // Interrupt number 6, since pin 4-7 must have Interrupt 4-7
+  GPIO_ExtIntConfig(PB0_port, PB0_pin, 6, true, true, true);
+  #if DEVICE_IS_BLE_SERVER == 0
+    GPIO_PinModeSet(PB1_port, PB1_pin, gpioModeInput, 1);
+    // Interrupt number 4 so GPIO_EVEN_IRQHandler() handles both,
+    // otherwise GPIO_ODD_IRQHandler() must be called
+    GPIO_ExtIntConfig(PB1_port, PB1_pin, 4, true, true, true);
+  #endif
 }
 
 // Referenced from Lecture 6
