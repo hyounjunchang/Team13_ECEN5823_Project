@@ -157,7 +157,8 @@ bool add_indication_to_queue(ble_indications_struct_t *indication){
 }
 
 // returns false if queue empty, writes indication to indication_ptr if true
-bool remove_indication_from_queue(ble_indications_struct_t* indication_ptr){
+// does not increment rd_index
+bool get_indication_from_queue(ble_indications_struct_t* indication_ptr){
   if (queue_is_empty()){
       return false;
   }
@@ -167,9 +168,14 @@ bool remove_indication_from_queue(ble_indications_struct_t* indication_ptr){
   indication_ptr->value = ind_queue[rd_index].value;
   indication_ptr->value_len = ind_queue[rd_index].value_len;
 
-  rd_index = nextIdx(rd_index);
   return true;
 }
+void remove_first_indication_from_queue(){
+  if (!queue_is_empty()){
+      rd_index = nextIdx(rd_index);
+  }
+}
+
 #else
 // for client, uuid in little-endian format
 uint8_t uuid_health_thermometer[2] = {0x09, 0x18};
@@ -233,7 +239,7 @@ bool send_indication(ble_indications_struct_t *indication, bool from_input){
   }
   // send indication from input
   else{
-      bool success = remove_indication_from_queue(&ind_to_send);
+      bool success = get_indication_from_queue(&ind_to_send);
       // removed from queue
       if(success){
           // not ok to send
@@ -245,6 +251,11 @@ bool send_indication(ble_indications_struct_t *indication, bool from_input){
               !ble_data.ok_to_send_PB0_indications){
               return false;
           }
+          if (ble_data.indication_in_flight){
+              return false;
+          }
+
+          remove_first_indication_from_queue();
           ble_data.indication_in_flight = true;
           // send indication
           sc = sl_bt_gatt_server_send_indication(
