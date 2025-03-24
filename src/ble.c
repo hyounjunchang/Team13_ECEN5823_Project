@@ -70,8 +70,6 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .passkey_received = false,
                               .is_bonded = false,
                               .indication_in_flight = false,
-                              .gatt_services_found = false,
-                              .gatt_characteristics_found = false,
                               .htmServiceHandle = 0,
                               .tempMeasHandle = 0,
                               .readReqInFlight = false,
@@ -177,18 +175,6 @@ void remove_first_indication_from_queue(){
 }
 
 #else
-// for client, uuid in little-endian format
-uint8_t uuid_health_thermometer[2] = {0x09, 0x18};
-uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
-
-// 00000001-38c8-433e-87ec-652a2d136289
-uint8_t uuid_button_service[16] = {0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65,
-                                   0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38,
-                                   0x1, 0x0 ,0x0, 0x0};
-// 00000002-38c8-433e-87ec-652a2d136289
-uint8_t uuid_button_state[16] = {0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65,
-                                   0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38,
-                                   0x2, 0x0 ,0x0, 0x0};
 // for handling button presses
 bool last_both_button_pressed = false;
 #endif
@@ -378,9 +364,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
   unsigned int PB0_val;
 #else
   sl_bt_evt_scanner_legacy_advertisement_report_t scan_report;
-  sl_bt_evt_gatt_procedure_completed_t gatt_completed;
   sl_bt_evt_gatt_service_t gatt_service;
   sl_bt_evt_gatt_characteristic_t gatt_characteristic;
+  sl_bt_evt_gatt_procedure_completed_t gatt_completed;
   uint8_t *val_ptr;
   uint32_t gatt_ext_signal;
   ble_client_state client_state = CLIENT_BLE_OFF;
@@ -703,13 +689,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
            LOG_ERROR("Error setting connection default parameters, Error code: 0x%x\r\n", (uint16_t)sc);
        }
 
-       // start scanning for device
-       sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
-                                sl_bt_scanner_discover_generic); // limited and general
-       if (sc != SL_STATUS_OK){
-           LOG_ERROR("Error starting Bluetooth scanner, Error code: 0x%x\r\n", (uint16_t)sc);
-       }
-
        // Start LCD Display
        displayInit();
        uint16_t ble_addr[6]; // due to printf errors
@@ -769,13 +748,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
        ble_data.connectionHandle = bt_conn_open.connection;
        ble_data.connection_alive = true;
-       // discover health thermometer service
-       sc = sl_bt_gatt_discover_primary_services_by_uuid(ble_data.connectionHandle,
-                                                         2,
-                                                         &uuid_health_thermometer[0]);
-       if (sc != SL_STATUS_OK){
-           LOG_ERROR("Error discovering GATT services, Error code: 0x%x\r\n", (uint16_t)sc);
-       }
+
        // display that server in connected mode
        displayPrintf(DISPLAY_ROW_CONNECTION, "Connected");
 
@@ -801,8 +774,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
        // update states
        ble_data.connection_alive = false;
-       ble_data.gatt_services_found = false;
-       ble_data.gatt_characteristics_found = false;
        ble_data.ok_to_send_htm_indications = false;
        ble_data.ok_to_send_PB0_indications = false;
        ble_data.passkey_received = false;
@@ -821,13 +792,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
        displayPrintf(DISPLAY_ROW_PASSKEY, "");
        displayPrintf(DISPLAY_ROW_ACTION, "");
        displayPrintf(DISPLAY_ROW_9, "");
-
-       // start scanning for device
-       sc = sl_bt_scanner_start(sl_bt_scanner_scan_phy_1m_and_coded,
-                                sl_bt_scanner_discover_generic); // limited and general
-       if (sc != SL_STATUS_OK){
-           LOG_ERROR("Error starting Bluetooth scanner, Error code: 0x%x\r\n", (uint16_t)sc);
-       }
        break;
      // Triggered whenever the connection parameters are changed and at any
      // time a connection is established
@@ -843,75 +807,12 @@ void handle_ble_event(sl_bt_msg_t* evt){
        break;
      // GATT procedure (find/set characteristic) completed, indication of temperature
      case sl_bt_evt_gatt_procedure_completed_id:
+       // only handle bonding and buttonState indication since it's not releated to discovery state machine
        gatt_completed = evt->data.evt_gatt_procedure_completed;
        sc = gatt_completed.result;
        client_state = get_client_state();
-
-       // GATT procedure successful
-       if (sc == SL_STATUS_OK){
-           switch(client_state){
-             case CLIENT_CHECK_GATT_SERVICE_1:
-               sc = sl_bt_gatt_discover_primary_services_by_uuid(ble_data.connectionHandle,
-                                                                 16,
-                                                                 &uuid_button_service[0]);
-               if (sc != SL_STATUS_OK){
-                   LOG_ERROR("Error discovering GATT service, Error code: 0x%x\r\n", (uint16_t)sc);
-               }
-               else{
-                   ble_data.gatt_services_found = true;
-               }
-               break;
-             case CLIENT_CHECK_GATT_SERVICE_2:
-               sc = sl_bt_gatt_discover_characteristics_by_uuid(ble_data.connectionHandle,
-                                                                ble_data.htmServiceHandle,
-                                                                2,
-                                                                &uuid_temp_measurement[0]);
-               if (sc != SL_STATUS_OK){
-                   LOG_ERROR("Error discovering GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
-               }
-               break;
-             case CLIENT_CHECK_GATT_CHARACTERISTIC_1:
-               sc = sl_bt_gatt_discover_characteristics_by_uuid(ble_data.connectionHandle,
-                                                                ble_data.buttonServiceHandle,
-                                                                16,
-                                                                &uuid_button_state[0]);
-               if (sc != SL_STATUS_OK){
-                   LOG_ERROR("Error discovering GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
-               }
-               else{
-                   ble_data.gatt_characteristics_found = true;
-               }
-               break;
-             case CLIENT_CHECK_GATT_CHARACTERISTIC_2:
-               sc = sl_bt_gatt_set_characteristic_notification(ble_data.connectionHandle,
-                                                               ble_data.tempMeasHandle,
-                                                               sl_bt_gatt_indication);
-               if (sc != SL_STATUS_OK){
-                   LOG_ERROR("Error setting GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
-               }
-               break;
-             case CLIENT_SET_GATT_INDICATION:
-               ble_data.ok_to_send_htm_indications = true;
-               displayPrintf(DISPLAY_ROW_CONNECTION, "Handling Indications");
-               gpioLed0SetOn();
-               break;
-             case CLIENT_RECEIVE_TEMP_DATA:
-               if (ble_data.PB0IndReqInFlight){
-                   if(ble_data.ok_to_send_PB0_indications){
-                       gpioLed1SetOn();
-                   }
-                   else{
-                       gpioLed1SetOff();
-                   }
-                   ble_data.PB0IndReqInFlight = false;
-               }
-               break;
-             default:
-               break;
-           }
-       }
        // read request failed due to low encryption
-       else if (sc == SL_STATUS_BT_ATT_INSUFFICIENT_ENCRYPTION){
+       if (sc == SL_STATUS_BT_ATT_INSUFFICIENT_ENCRYPTION){
            sc = sl_bt_sm_increase_security(ble_data.connectionHandle);
            if (sc != SL_STATUS_OK){
                LOG_ERROR("Error increasing BLE security, Error code: 0x%x\r\n", (uint16_t)sc);
@@ -921,23 +822,16 @@ void handle_ble_event(sl_bt_msg_t* evt){
                ble_data.readReqInFlight = false;
            }
        }
-       // GATT procedure failed
-       else{
-           switch(client_state){
-             case CLIENT_CHECK_GATT_SERVICE_1:
-             case CLIENT_CHECK_GATT_SERVICE_2:
-               LOG_ERROR("Error finding GATT service, Error code: 0x%x\r\n", (uint16_t)sc);
-               break;
-             case CLIENT_CHECK_GATT_CHARACTERISTIC_1:
-             case CLIENT_CHECK_GATT_CHARACTERISTIC_2:
-               LOG_ERROR("Error finding GATT characteristic, Error code: 0x%x\r\n", (uint16_t)sc);
-               break;
-             case CLIENT_SET_GATT_INDICATION:
-               LOG_ERROR("Error setting GATT indication, Error code: 0x%x\r\n", (uint16_t)sc);
-               break;
-             default:
-               break;
-           }
+       else if (sc == SL_STATUS_OK && client_state == CLIENT_RECEIVE_TEMP_DATA){
+          if (ble_data.PB0IndReqInFlight){
+             if(ble_data.ok_to_send_PB0_indications){
+                 gpioLed1SetOn();
+             }
+             else{
+                 gpioLed1SetOff();
+             }
+             ble_data.PB0IndReqInFlight = false;
+          }
        }
        break;
      // GATT service discovered

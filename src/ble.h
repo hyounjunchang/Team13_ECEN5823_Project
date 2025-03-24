@@ -60,8 +60,6 @@ typedef struct {
   bool indication_in_flight;
 
   // values unique for client
-  bool gatt_services_found;
-  bool gatt_characteristics_found;
   uint32_t htmServiceHandle;
   uint16_t tempMeasHandle;
   uint32_t buttonServiceHandle;
