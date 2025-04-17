@@ -139,15 +139,76 @@ When used with the Measurement Interval characteristic, the Valid Range descript
     </characteristic>
   </service>
 
-  <!--ECEN5823 Encryption Test-->
-  <service advertise="true" name="ECEN5823 Encryption Test" requirement="mandatory" sourceId="" type="primary" uuid="00000001-38c8-433e-87ec-652a2d136289">
+  <!--Study Location-->
+  <service advertise="true" id="study_location" name="Study Location" requirement="mandatory" sourceId="" type="primary" uuid="00000001-38c8-433e-87ec-652a2d136289">
 
-    <!--ECEN5823 Encrypted Button State-->
-    <characteristic const="false" id="button_state" name="ECEN5823 Encrypted Button State" sourceId="" uuid="00000002-38c8-433e-87ec-652a2d136289">
+    <!--Space Occupied-->
+    <characteristic const="false" id="space_occupied_state" name="Space Occupied" sourceId="" uuid="00000002-38c8-433e-87ec-652a2d136289">
       <value length="1" type="hex" variable_length="false">00</value>
       <properties>
-        <read authenticated="false" bonded="true" encrypted="false"/>
-        <indicate authenticated="false" bonded="true" encrypted="false"/>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+        <notify authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Location Name-->
+    <characteristic const="false" id="location_name_0" name="Location Name" sourceId="org.bluetooth.characteristic.location_name" uuid="2AB5">
+      <informativeText>Abstract: The Location Name characteristic describes the name of the location the device is installed in.</informativeText>
+      <value length="0" type="utf-8" variable_length="true">Study Space 1</value>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+        <write authenticated="false" bonded="true" encrypted="false"/>
+      </properties>
+
+      <!--Server Characteristic Configuration-->
+      <descriptor const="false" discoverable="true" id="server_characteristic_configuration" name="Server Characteristic Configuration" sourceId="org.bluetooth.descriptor.gatt.server_characteristic_configuration" uuid="2903">
+        <informativeText>Abstract: 
+        The Server Characteristic Configuration descriptor defines how the characteristic descriptor is associated with may be configured for the server.
+		
+Summary: 
+        Only one Server Characteristic Configuration descriptor exists in a characteristic definition.
+        A client may write this configuration descriptor to control the configuration of the characteristic on the server for all clients.
+        There is a single instantiation of this descriptor for all clients.
+        Authentication and authorization may be required by the server to write this descriptor.            
+		</informativeText>
+        <properties>
+          <read authenticated="false" bonded="false" encrypted="false"/>
+          <write authenticated="false" bonded="false" encrypted="false"/>
+        </properties>
+        <value length="2" type="hex" variable_length="false"/>
+      </descriptor>
+    </characteristic>
+
+    <!--Space Ready-->
+    <characteristic const="false" id="space_ready_state" name="Space Ready" sourceId="" uuid="00000003-38c8-433e-87ec-652a2d136289">
+      <value length="1" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+        <notify authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Sound Level-->
+    <characteristic const="false" id="sound_level_state" name="Sound Level" sourceId="" uuid="00000004-38c8-433e-87ec-652a2d136289">
+      <value length="0" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Light Level-->
+    <characteristic const="false" id="light_level_state" name="Light Level" sourceId="" uuid="00000005-38c8-433e-87ec-652a2d136289">
+      <value length="0" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
+      </properties>
+    </characteristic>
+
+    <!--Button State-->
+    <characteristic const="false" id="button_state" name="Button State" sourceId="" uuid="00000006-38c8-433e-87ec-652a2d136289">
+      <value length="0" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="false" encrypted="false"/>
       </properties>
     </characteristic>
   </service>

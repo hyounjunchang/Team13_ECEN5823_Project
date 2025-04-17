@@ -462,6 +462,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
          LOG_ERROR("Error stopping Bluetooth advertising, Error code: 0x%x\r\n", (uint16_t)sc);
       }
 
+      /*
       // request sl_bt_connection parameter
       sc = sl_bt_connection_set_parameters(bt_conn_open.connection,
                                            CONNECTION_INTERVAL(CONN_INTERVAL_MS_VAL), // 75ms
@@ -474,6 +475,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       if (sc != SL_STATUS_OK){
          LOG_ERROR("Error requesting Bluetooth connection parameters, Error code: 0x%x\r\n", (uint16_t)sc);
       }
+      */
 
       ble_data.connectionHandle = bt_conn_open.connection;
       ble_data.connection_alive = true;
