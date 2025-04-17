@@ -27,6 +27,10 @@ void SI7021_start_read_sensor();
 int SI7021_read_measured_temp();
 
 uint8_t* getReadData_buf();
+
+int8_t getSoundLevel();
+uint8_t getAmbientLightLevel();
+
 #endif
 
 #endif /* SRC_I2C_H_ */

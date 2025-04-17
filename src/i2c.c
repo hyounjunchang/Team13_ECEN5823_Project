@@ -141,4 +141,14 @@ int SI7021_read_measured_temp(){
 uint8_t* getReadData_buf(){
   return &(read_data[0]);
 }
+
+int8_t getSoundLevel(){
+  return rand() % 20;
+}
+
+uint8_t getAmbientLightLevel(){
+  return rand() % 45;
+}
+
+
 #endif
