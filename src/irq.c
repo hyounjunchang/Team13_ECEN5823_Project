@@ -32,6 +32,7 @@
 
 // for I2C typedefs
 #include <em_i2c.h>
+#include "i2c.h"
 
 #include "ble.h"
 
@@ -100,6 +101,7 @@ void I2C0_IRQHandler(void) {
    * has access to global variables (transferSequence, cmd_data, read_data)
    * which were sent to I2C_TransferInit()
    */
+
   I2C_TransferReturn_TypeDef transferStatus;
   transferStatus = I2C_Transfer(I2C0);
   if (transferStatus == i2cTransferDone) {

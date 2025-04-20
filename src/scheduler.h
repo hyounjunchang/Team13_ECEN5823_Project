@@ -36,6 +36,13 @@ typedef enum{
   SI7021_WAIT_I2C_READ_START,
   SI7021_WAIT_I2C_READ_COMPLETE
 } SI7021_state;
+
+typedef enum{
+  VEML6030_IDLE,
+  VEML6030_WAIT_I2C_READ
+} VEML6030_state;
+
+
 #endif
 
 

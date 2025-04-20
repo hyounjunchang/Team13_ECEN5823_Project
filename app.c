@@ -312,7 +312,7 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
 
   // sequence through states driven by events
 #if DEVICE_IS_BLE_SERVER
-  temperature_state_machine(evt);    // put this code in scheduler.c/.h
+  // temperature_state_machine(evt); // currently disabled until i2c queue implemented
   ambient_light_state_machine(evt);
   sound_level_state_machine(evt);
 #endif

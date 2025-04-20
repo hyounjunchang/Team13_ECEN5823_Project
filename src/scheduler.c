@@ -31,25 +31,12 @@
 
 #if DEVICE_IS_BLE_SERVER
 static SI7021_state currState_SI7021 = SI7021_IDLE;
-#else
-static ble_client_state currState_client = CLIENT_BLE_OFF;
 
-unsigned int last_PB0_val = 1; // not pressed
-unsigned int last_PB1_val = 1;
-bool button_indication_sent = false;
+static VEML6030_state currState_VEML6030 = VEML6030_IDLE;
+static uint16_t VEML6030_timer_count = 0;
 
-// for client, uuid in little-endian format
-uint8_t uuid_health_thermometer[2] = {0x09, 0x18};
-uint8_t uuid_temp_measurement[2] = {0x1C, 0x2A};
 
-// 00000001-38c8-433e-87ec-652a2d136289
-uint8_t uuid_button_service[16] = {0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65,
-                                   0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38,
-                                   0x1, 0x0 ,0x0, 0x0};
-// 00000002-38c8-433e-87ec-652a2d136289
-uint8_t uuid_button_state[16] = {0x89, 0x62, 0x13, 0x2d, 0x2a, 0x65,
-                                   0xec, 0x87, 0x3e, 0x43, 0xc8, 0x38,
-                                   0x2, 0x0 ,0x0, 0x0};
+i2c_transfer_target curr_i2c_transfer = I2C_TRANSFER_NONE;
 #endif
 
 // edited from Lecture 6 slides
@@ -64,12 +51,27 @@ void set_scheduler_event(scheduler_event event){
       break;
     // prioritize I2C transfer event first
     case EVENT_I2C_TRANSFER:
-     CORE_ENTER_CRITICAL();
-     sc = sl_bt_external_signal(BLE_I2C_TRANSFER_FLAG);
-     CORE_EXIT_CRITICAL();
-     if (sc != SL_STATUS_OK){
-         LOG_ERROR("Error setting BLE_I2C_TRANSFER_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+     curr_i2c_transfer = get_I2C_transfer_target();
+     if (curr_i2c_transfer == I2C_TRANSFER_SI7021){
+         CORE_ENTER_CRITICAL();
+         sc = sl_bt_external_signal(BLE_I2C_SI7021_TRANSFER_FLAG);
+         CORE_EXIT_CRITICAL();
+
+         if (sc != SL_STATUS_OK){
+             LOG_ERROR("Error setting BLE_I2C_SI7021_TRANSFER_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+         }
      }
+     else if (curr_i2c_transfer == I2C_TRANSFER_VEML6030){
+         CORE_ENTER_CRITICAL();
+         sc = sl_bt_external_signal(BLE_I2C_VEML6030_TRANSFER_FLAG);
+         CORE_EXIT_CRITICAL();
+
+         if (sc != SL_STATUS_OK){
+             LOG_ERROR("Error setting BLE_I2C_VEML6030_TRANSFER_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+         }
+     }
+     // change I2C target
+     clear_I2C_transfer_target();
      break;
     case EVENT_LETIMER0_COMP1:
       CORE_ENTER_CRITICAL();
@@ -105,72 +107,6 @@ void set_scheduler_event(scheduler_event event){
               LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
           }
       }
-      break;
-    default:
-      break;
-  }
-#else
-  sl_status_t sc;
-  unsigned int PB0_val, PB1_val;
-  CORE_DECLARE_IRQ_STATE;
-  switch (event){
-    case EVENT_PB:
-      PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
-      PB1_val = gpioRead_PB1();
-
-      CORE_ENTER_CRITICAL();
-      if (PB0_val == 0 && PB1_val == 0){ // both pressed
-          if (last_PB0_val == 0  && last_PB1_val == 0){
-              sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
-          }
-          else{
-              sc = sl_bt_external_signal(BLE_PB0_PB1_PRESS);
-          }
-      }
-      else if (PB0_val == 0 && PB1_val == 1){ // only PB0 pressed
-          if (last_PB0_val == 1 && last_PB1_val == 1){
-              sc = sl_bt_external_signal(BLE_PB0_PRESS);
-          }
-          else if (last_PB0_val == 0 && last_PB1_val == 0){ // release for button indication
-              sc = sl_bt_external_signal(BLE_PB0_PB1_RELEASE);
-          }
-          else{
-              sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
-          }
-      }
-      else if (PB0_val == 1 && PB1_val == 0){ // only PB1 pressed
-          if (last_PB0_val == 1 && last_PB1_val == 1){
-              sc = sl_bt_external_signal(BLE_PB1_PRESS);
-          }
-          else if (last_PB0_val == 0 && last_PB1_val == 0){ // release for button indication
-              sc = sl_bt_external_signal(BLE_PB0_PB1_RELEASE);
-          }
-          else{
-              sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
-          }
-      }
-      else{ // both released
-          if (last_PB0_val == 0 && last_PB1_val == 1){
-            sc = sl_bt_external_signal(BLE_PB0_RELEASE);
-          }
-          else if (last_PB0_val == 1 && last_PB1_val == 0){
-            sc = sl_bt_external_signal(BLE_PB1_RELEASE);
-          }
-          else if (last_PB0_val == 0 && last_PB1_val == 0){
-            sc = sl_bt_external_signal(BLE_PB0_PB1_RELEASE);
-          }
-          else{
-            sc = sl_bt_external_signal(BLE_PB_UNDEFINED);
-          }
-      }
-      last_PB0_val = PB0_val;
-      last_PB1_val = PB1_val;
-      CORE_EXIT_CRITICAL();
-
-      if (sc != SL_STATUS_OK){
-          LOG_ERROR("Error setting BLE_PB_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
-      }
-
       break;
     default:
       break;
@@ -214,7 +150,7 @@ void temperature_state_machine(sl_bt_msg_t* evt){
       }
       break;
     case SI7021_WAIT_I2C_WRITE:
-      if (ble_event_flags & BLE_I2C_TRANSFER_FLAG){
+      if (ble_event_flags & BLE_I2C_SI7021_TRANSFER_FLAG){
           // take action and update state
           SI7021_wait_temp_sensor();
           currState_SI7021 = SI7021_WAIT_I2C_READ_START;
@@ -230,7 +166,7 @@ void temperature_state_machine(sl_bt_msg_t* evt){
       }
       break;
     case SI7021_WAIT_I2C_READ_COMPLETE:
-      if (ble_event_flags & BLE_I2C_TRANSFER_FLAG){
+      if (ble_event_flags & BLE_I2C_SI7021_TRANSFER_FLAG){
           // take action and update state
           if (ble_connection_alive){
             // read temperature
@@ -247,7 +183,49 @@ void temperature_state_machine(sl_bt_msg_t* evt){
   }
 }
 
+// Read Ambient Light every 5 sec
 void ambient_light_state_machine(sl_bt_msg_t* evt){
+  bool start_read = false;
+  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+  //ble_data_struct_t* ble_data_ptr = get_ble_data();
+
+  uint16_t ambient_light_value;
+
+  // start reading VEML6030 every 5 second
+  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_soft_timer_id){
+      // read every 5 sec, 8 * 5 soft timer (1 timer = 125ms)
+      if (VEML6030_timer_count == 39){
+          VEML6030_timer_count = 0;
+          start_read = true;
+      }
+      else{
+          VEML6030_timer_count++;
+      }
+  }
+  // ignore if not ext_ble event or soft_timer event
+  else if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+      return;
+  }
+
+  switch(currState_VEML6030){
+    case VEML6030_IDLE:
+      if (start_read){
+          set_I2C_transfer_target(I2C_TRANSFER_VEML6030);
+          VEML6030_start_read_ambient_light_level();
+          currState_VEML6030 = VEML6030_WAIT_I2C_READ;
+      }
+      break;
+    case VEML6030_WAIT_I2C_READ:
+      if (ble_event_flags & BLE_I2C_VEML6030_TRANSFER_FLAG){
+          ambient_light_value = VEML6030_read_measured_ambient_light();
+
+          LOG_INFO("Current Ambient Light: %d\r\n", ambient_light_value);
+          currState_VEML6030 = VEML6030_IDLE;
+      }
+      break;
+    default:
+      break;
+  }
 
 }
 void sound_level_state_machine(sl_bt_msg_t* evt){

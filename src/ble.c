@@ -574,7 +574,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
     case sl_bt_evt_gatt_server_indication_timeout_id:
       LOG_ERROR("Received Indication Timeout\r\n");
       break;
-    // Bluetooth soft timer interrupt (200 ms)
+    // Bluetooth soft timer interrupt (125 ms)
     case sl_bt_evt_system_soft_timer_id:
       // send_indication() does not send indication if queue empty
       send_indication(&ind_to_send, FROM_QUEUE);
