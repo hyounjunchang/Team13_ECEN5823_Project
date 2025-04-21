@@ -24,13 +24,14 @@ extern const sli_bt_gattdb_t gattdb;
 #define gattdb_measurement_interval           29
 #define gattdb_valid_range                    30
 #define gattdb_study_location                 31
-#define gattdb_space_occupied_state           33
-#define gattdb_location_name_0                36
-#define gattdb_server_characteristic_configuration 37
-#define gattdb_space_ready_state              39
-#define gattdb_sound_level_state              42
-#define gattdb_light_level_state              44
-#define gattdb_button_state                   46
+#define gattdb_location_name_0                33
+#define gattdb_server_characteristic_configuration 34
+#define gattdb_space_occupied                 36
+#define gattdb_space_ready                    39
+#define gattdb_ambient_light_measurement      41
+#define gattdb_ambient_light_level            43
+#define gattdb_sound_measurement              45
+#define gattdb_sound_level                    47
 
 
 #endif // __GATT_DB_H

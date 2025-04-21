@@ -129,12 +129,11 @@ void temperature_state_machine(sl_bt_msg_t* evt){
   uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
 
   ble_data_struct_t* ble_data_ptr = get_ble_data();
-  bool ble_connection_alive = ble_data_ptr->connection_alive;
 
   switch(currState_SI7021){
     case SI7021_IDLE:
-      if ((ble_event_flags & BLE_LETIMER0_UF_FLAG) && ble_connection_alive &&
-          ble_data_ptr->ok_to_send_htm_indications) {
+      if ((ble_event_flags & BLE_LETIMER0_UF_FLAG) &&
+          ble_data_ptr->ok_to_send_htm_notifications) {
           // take action and update state
           gpioPowerOn_SI7021();
           currState_SI7021 = SI7021_WAIT_POWER_UP;
@@ -167,13 +166,10 @@ void temperature_state_machine(sl_bt_msg_t* evt){
       break;
     case SI7021_WAIT_I2C_READ_COMPLETE:
       if (ble_event_flags & BLE_I2C_SI7021_TRANSFER_FLAG){
-          // take action and update state
-          if (ble_connection_alive){
-            // read temperature
-            int curr_temperature = SI7021_read_measured_temp();
-            //LOG_INFO("Read temperature %iC\r\n", curr_temperature);
-            update_temp_meas_gatt_and_send_indication(curr_temperature);
-          }
+          // read temperature
+          int curr_temperature = SI7021_read_measured_temp();
+          //LOG_INFO("Read temperature %iC\r\n", curr_temperature);
+          update_temp_meas_gatt_and_send_notification(curr_temperature);
           gpioPowerOff_SI7021();
           currState_SI7021 = SI7021_IDLE;
       }

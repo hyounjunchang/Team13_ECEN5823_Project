@@ -72,7 +72,8 @@ Examples:
     </informativeText>
       <value length="17" type="hex" variable_length="false">00</value>
       <properties>
-        <indicate authenticated="false" bonded="false" encrypted="false"/>
+        <read authenticated="false" bonded="true" encrypted="false"/>
+        <notify authenticated="false" bonded="true" encrypted="false"/>
       </properties>
     </characteristic>
 
@@ -142,15 +143,6 @@ When used with the Measurement Interval characteristic, the Valid Range descript
   <!--Study Location-->
   <service advertise="true" id="study_location" name="Study Location" requirement="mandatory" sourceId="" type="primary" uuid="00000001-38c8-433e-87ec-652a2d136289">
 
-    <!--Space Occupied-->
-    <characteristic const="false" id="space_occupied_state" name="Space Occupied" sourceId="" uuid="00000002-38c8-433e-87ec-652a2d136289">
-      <value length="1" type="hex" variable_length="false">00</value>
-      <properties>
-        <read authenticated="false" bonded="false" encrypted="false"/>
-        <notify authenticated="false" bonded="false" encrypted="false"/>
-      </properties>
-    </characteristic>
-
     <!--Location Name-->
     <characteristic const="false" id="location_name_0" name="Location Name" sourceId="org.bluetooth.characteristic.location_name" uuid="2AB5">
       <informativeText>Abstract: The Location Name characteristic describes the name of the location the device is installed in.</informativeText>
@@ -179,36 +171,47 @@ Summary:
       </descriptor>
     </characteristic>
 
-    <!--Space Ready-->
-    <characteristic const="false" id="space_ready_state" name="Space Ready" sourceId="" uuid="00000003-38c8-433e-87ec-652a2d136289">
+    <!--Space Occupied-->
+    <characteristic const="false" id="space_occupied" name="Space Occupied" sourceId="" uuid="00000011-38c8-433e-87ec-652a2d136289">
       <value length="1" type="hex" variable_length="false">00</value>
       <properties>
-        <read authenticated="false" bonded="false" encrypted="false"/>
-        <notify authenticated="false" bonded="false" encrypted="false"/>
+        <read authenticated="false" bonded="true" encrypted="false"/>
+        <notify authenticated="false" bonded="true" encrypted="false"/>
       </properties>
     </characteristic>
+
+    <!--Space Ready-->
+    <characteristic const="false" id="space_ready" name="Space Ready" sourceId="" uuid="00000021-38c8-433e-87ec-652a2d136289">
+      <value length="1" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="true" encrypted="false"/>
+        <notify authenticated="false" bonded="true" encrypted="false"/>
+      </properties>
+    </characteristic>
+  </service>
+
+  <!--Ambient Light Measurement-->
+  <service advertise="true" id="ambient_light_measurement" name="Ambient Light Measurement" requirement="mandatory" sourceId="" type="primary" uuid="00000002-38c8-433e-87ec-652a2d136289">
+
+    <!--Ambient Light Level-->
+    <characteristic const="false" id="ambient_light_level" name="Ambient Light Level" sourceId="" uuid="00000012-38c8-433e-87ec-652a2d136289">
+      <value length="0" type="hex" variable_length="false">00</value>
+      <properties>
+        <read authenticated="false" bonded="true" encrypted="false"/>
+        <notify authenticated="false" bonded="true" encrypted="false"/>
+      </properties>
+    </characteristic>
+  </service>
+
+  <!--Sound Measurement-->
+  <service advertise="true" id="sound_measurement" name="Sound Measurement" requirement="mandatory" sourceId="" type="primary" uuid="00000003-38c8-433e-87ec-652a2d136289">
 
     <!--Sound Level-->
-    <characteristic const="false" id="sound_level_state" name="Sound Level" sourceId="" uuid="00000004-38c8-433e-87ec-652a2d136289">
+    <characteristic const="false" id="sound_level" name="Sound Level" sourceId="" uuid="00000013-38c8-433e-87ec-652a2d136289">
       <value length="0" type="hex" variable_length="false">00</value>
       <properties>
-        <read authenticated="false" bonded="false" encrypted="false"/>
-      </properties>
-    </characteristic>
-
-    <!--Light Level-->
-    <characteristic const="false" id="light_level_state" name="Light Level" sourceId="" uuid="00000005-38c8-433e-87ec-652a2d136289">
-      <value length="0" type="hex" variable_length="false">00</value>
-      <properties>
-        <read authenticated="false" bonded="false" encrypted="false"/>
-      </properties>
-    </characteristic>
-
-    <!--Button State-->
-    <characteristic const="false" id="button_state" name="Button State" sourceId="" uuid="00000006-38c8-433e-87ec-652a2d136289">
-      <value length="0" type="hex" variable_length="false">00</value>
-      <properties>
-        <read authenticated="false" bonded="false" encrypted="false"/>
+        <read authenticated="false" bonded="true" encrypted="false"/>
+        <notify authenticated="false" bonded="true" encrypted="false"/>
       </properties>
     </characteristic>
   </service>

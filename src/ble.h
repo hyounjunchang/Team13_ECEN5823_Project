@@ -51,31 +51,18 @@ typedef struct {
   // The advertising set handle allocated from Bluetooth stack.
   uint8_t advertisingSetHandle;
   uint8_t connectionHandle;
-  bool connection_alive;
-  bool ok_to_send_htm_indications;
-  bool ok_to_send_PB0_indications;
+  bool ok_to_send_htm_notifications;
+  bool ok_to_send_amb_light_notifications;
+  bool ok_to_send_sound_level_notifications;
   bool passkey_received;
   bool is_bonded;
-
-  // values unique for server
-  bool indication_in_flight;
-
-  // values unique for client
-  uint32_t htmServiceHandle;
-  uint16_t tempMeasHandle;
-  uint32_t buttonServiceHandle;
-  uint16_t buttonStateHandle;
-  bool readReqInFlight;
-  bool PB0IndReqInFlight;
-
 } ble_data_struct_t;
 
 // ble functions
 ble_data_struct_t* get_ble_data();
 
 #if DEVICE_IS_BLE_SERVER
-void update_temp_meas_gatt_and_send_indication(int temp_in_c); // update temperature gatt and send indicator
-void update_PB0_gatt_and_send_indication(uint8_t value);
+void update_temp_meas_gatt_and_send_notification(int temp_in_c); // update temperature gatt and send notification
 #endif
 // handles all ble events, different implementation for server and client
 void handle_ble_event(sl_bt_msg_t* evt);
