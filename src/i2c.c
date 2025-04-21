@@ -194,23 +194,15 @@ void VEML6030_initialize(){
   transferSequence.buf[0].data = &(VEML6030_cmd_data[0]); // pointer to data to write
   transferSequence.buf[0].len = 3;
 
-  transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
+  // send twice, current hardware sometimes fails first I2C transfer
+  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
   if (transferStatus != i2cTransferDone) {
-      LOG_ERROR("TransferStatus: %d\r\n", transferStatus); // currently NAK
       LOG_ERROR("I2C transfer Failed\r\n");
   }
-  else{
-      LOG_INFO("ALC_CONF complete\r\n");
+  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
+  if (transferStatus != i2cTransferDone) {
+      LOG_ERROR("I2C transfer Failed\r\n");
   }
-
-  transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
-    if (transferStatus != i2cTransferDone) {
-        LOG_ERROR("TransferStatus: %d\r\n", transferStatus); // currently NAK
-        LOG_ERROR("I2C transfer Failed\r\n");
-    }
-    else{
-        LOG_INFO("ALC_CONF complete\r\n");
-    }
 
   // Power Saving Mode
   VEML6030_cmd_data[0] = VEML6030_POWER_SAVING;
@@ -222,15 +214,10 @@ void VEML6030_initialize(){
   transferSequence.buf[0].data = &(VEML6030_cmd_data[0]); // pointer to data to write
   transferSequence.buf[0].len = 3;
 
-  transferStatus = I2CSPM_Transfer (I2C0, &transferSequence);
+  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
   if (transferStatus != i2cTransferDone) {
-     LOG_ERROR("TransferStatus: %d\r\n", transferStatus); // currently NAK
      LOG_ERROR("I2C transfer Failed\r\n");
   }
-  else{
-      LOG_INFO("Power Saving Mode complete\r\n");
-  }
-
 }
 
 // since refresh time = 4100ms, call this every >5 sec
@@ -247,20 +234,16 @@ void VEML6030_start_read_ambient_light_level(){
   transferSequence.buf[1].data = &(VEML6030_read_data[0]);
   transferSequence.buf[1].len = 2;
 
-
   I2C_TransferReturn_TypeDef transferStatus;
-  // transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
+  // receving SW fault if NVIC interrupt for I2C_Transfer is used, until this is fixed I2CSPM useds
+  //transferStatus = I2C_TransferInit(I2C0, &transferSequence);
+  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence); // polling
   if (transferStatus < 0) {
     LOG_ERROR("%d\r\n", transferStatus);
-  }
-  else{
-    LOG_INFO("data[0:1] - %d %d\r\n", VEML6030_read_data[0],VEML6030_read_data[1]);
   }
 }
 
 uint16_t VEML6030_read_measured_ambient_light(){
-
   // sends 2-byte data, MSB then LSB (big-endian)
   // uint16_t is little-endian, so you can't directly store to uint16_t
   // add values from 0

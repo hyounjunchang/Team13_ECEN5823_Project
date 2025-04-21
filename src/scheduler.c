@@ -185,40 +185,42 @@ void temperature_state_machine(sl_bt_msg_t* evt){
 
 // Read Ambient Light every 5 sec
 void ambient_light_state_machine(sl_bt_msg_t* evt){
-  bool start_read = false;
-  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
-  //ble_data_struct_t* ble_data_ptr = get_ble_data();
+  bool start_i2c = false;
+  bool read_sensor = false;
 
+  //uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+  //ble_data_struct_t* ble_data_ptr = get_ble_data();
   uint16_t ambient_light_value;
 
-  // start reading VEML6030 every 5 second
+  // start reading VEML6030 every 5 second, 8 * 5 soft timer (1 timer = 125ms)
   if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_soft_timer_id){
-      // read every 5 sec, 8 * 5 soft timer (1 timer = 125ms)
-      if (VEML6030_timer_count == 39){
-          VEML6030_timer_count = 0;
-          start_read = true;
+      if (VEML6030_timer_count == 0){
+          start_i2c = true;
+          VEML6030_timer_count++;
       }
-      else{
+      else if(VEML6030_timer_count == 39){
+          read_sensor = true;
+          VEML6030_timer_count = 0;
+      }
+      else {
           VEML6030_timer_count++;
       }
   }
-  // ignore if not ext_ble event or soft_timer event
-  else if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+  else{
       return;
   }
 
   switch(currState_VEML6030){
     case VEML6030_IDLE:
-      if (start_read){
+      if (start_i2c){
           set_I2C_transfer_target(I2C_TRANSFER_VEML6030);
           VEML6030_start_read_ambient_light_level();
           currState_VEML6030 = VEML6030_WAIT_I2C_READ;
       }
       break;
     case VEML6030_WAIT_I2C_READ:
-      if (ble_event_flags & BLE_I2C_VEML6030_TRANSFER_FLAG){
+      if (read_sensor){
           ambient_light_value = VEML6030_read_measured_ambient_light();
-
           LOG_INFO("Current Ambient Light: %d\r\n", ambient_light_value);
           currState_VEML6030 = VEML6030_IDLE;
       }

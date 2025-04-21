@@ -121,7 +121,7 @@ void I2C0_IRQHandler(void) {
       }
   }
   if (transferStatus < 0) {
-      LOG_ERROR("%d", transferStatus);
+      LOG_ERROR("%d\r\n", transferStatus);
   }
 } // I2C0_IRQHandler()
 
