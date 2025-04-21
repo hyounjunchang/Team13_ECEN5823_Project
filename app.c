@@ -65,6 +65,7 @@
 #include "src/scheduler.h"
 #include "src/i2c.h"
 #include "src/ble.h"
+#include "src/adc.h"
 
 
 // Students: Here is an example of how to correctly include logging functions in
@@ -196,6 +197,7 @@ SL_WEAK void app_init(void)
 // server uses GPIO, and I2C
 #if DEVICE_IS_BLE_SERVER
   initialize_I2C();
+  initADC();
 #endif
 
 

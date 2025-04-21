@@ -36,6 +36,8 @@
 
 #include "ble.h"
 
+#include "src/em_adc.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -139,3 +141,22 @@ void GPIO_EVEN_IRQHandler(){
   set_scheduler_event(EVENT_PB);
   CORE_EXIT_CRITICAL();
 }
+
+void ADC0_IRQHandler(void)
+{
+  CORE_DECLARE_IRQ_STATE;
+  // step 1: determine pending interrupts in peripheral
+  uint32_t interrupt_flags = ADC_IntGetEnabled(ADC0);
+
+  // step 2: clear pending interrupts in peripheral
+  ADC_IntClear(ADC0, interrupt_flags);
+
+  // step 3: your handling code
+  // set event
+  if (interrupt_flags & ADC_IEN_SCAN){
+    CORE_ENTER_CRITICAL();
+    set_scheduler_event(EVENT_ADC_IEN_SCAN);
+    CORE_EXIT_CRITICAL();
+  }
+}
+

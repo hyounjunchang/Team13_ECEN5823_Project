@@ -40,6 +40,7 @@
 #define BLE_PB_UNDEFINED 0x200
 #define BLE_PB_MASK 0x3F8
 #define BLE_I2C_VEML6030_TRANSFER_FLAG 0x400
+#define BLE_ADC_IEN_SCAN 0x800
 
 // BLE Data Structure, save all of our private BT data in here.
 // Modern C (circa 2021 does it this way)

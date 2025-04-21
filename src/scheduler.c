@@ -25,6 +25,8 @@
 
 #include "lcd.h"
 
+#include "adc.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -34,6 +36,8 @@ static SI7021_state currState_SI7021 = SI7021_IDLE;
 
 static VEML6030_state currState_VEML6030 = VEML6030_IDLE;
 static uint16_t VEML6030_timer_count = 0;
+
+static uint16_t sound_detector_timer_count = 0;
 
 
 i2c_transfer_target curr_i2c_transfer = I2C_TRANSFER_NONE;
@@ -106,6 +110,14 @@ void set_scheduler_event(scheduler_event event){
           if (sc != SL_STATUS_OK){
               LOG_ERROR("Error setting BLE_PB0_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
           }
+      }
+      break;
+    case EVENT_ADC_IEN_SCAN:
+      CORE_ENTER_CRITICAL();
+      sc = sl_bt_external_signal(BLE_ADC_IEN_SCAN);
+      CORE_EXIT_CRITICAL();
+      if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error setting BLE_ADC_IEN_SCAN, Error Code: 0x%x\r\n", (uint16_t)sc);
       }
       break;
     default:
@@ -227,7 +239,28 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
 
 }
 void sound_level_state_machine(sl_bt_msg_t* evt){
+  // start reading ADC every 1 second, 8 soft timer ticks (1 timer = 125ms)
+  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_soft_timer_id){
+      if (sound_detector_timer_count == 7){
+          startADCscan();
+          sound_detector_timer_count = 0;
+      }
+      else {
+          sound_detector_timer_count++;
+      }
+      return;
+  }
+  else if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+      return;
+  }
 
+  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+  // ADC conversion done
+  if (ble_event_flags & BLE_ADC_IEN_SCAN){
+      uint32_t adc_mv = getScannedADCdata();
+
+      LOG_INFO("Sound Detector mV: %lu\r\n", adc_mv);
+  }
 }
 #endif
 
