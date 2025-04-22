@@ -6,8 +6,8 @@
  * @date      Apr 21, 2025
  *
  * @resources Referenced from Silicon Labs Peripheral Examples
- * https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/adc/adc_scan_letimer_interrupt/src/main_tg11.c
- * em_adc.h wasn't available from gecko 4.3.2 sdk, so source header file was copied to /srcs
+ * https://github.com/SiliconLabs/peripheral_examples/tree/master/series1/adc
+ * em_adc.h and em_adc.c weren't available from gecko 4.3.2 sdk, so source header file was copied to /srcs
  *
  *
  */
@@ -39,6 +39,7 @@ uint32_t adc_value = 0; // ADC value in mV (max 2.5V)
 
 /**************************************************************************//**
  * @brief ADC initialization
+ * Source: https://github.com/SiliconLabs/peripheral_examples/blob/master/series1/adc/adc_single_letimer_interrupt/src/main_s1.c
  *****************************************************************************/
 void initADC ()
 {
@@ -48,50 +49,38 @@ void initADC ()
 
   // Declare init structs
   ADC_Init_TypeDef init = ADC_INIT_DEFAULT;
-  ADC_InitScan_TypeDef initScan = ADC_INITSCAN_DEFAULT;
+  ADC_InitSingle_TypeDef initSingle = ADC_INITSINGLE_DEFAULT;
 
   // Modify init structs
-  init.prescale = ADC_PrescaleCalc(adcFreq, 0);
-  init.timebase = ADC_TimebaseCalc(0);
+  init.prescale   = ADC_PrescaleCalc(adcFreq, 0);
+  init.timebase   = ADC_TimebaseCalc(0);
 
-  initScan.diff          = false;       // single ended
-  initScan.reference     = adcRef2V5;   // internal 2.5V reference, Sensor outputs 2.7V
-  initScan.resolution    = adcRes12Bit; // 12-bit resolution
-  initScan.acqTime       = adcAcqTime4; // set acquisition time to meet minimum requirements
-  initScan.fifoOverwrite = true;        // FIFO overflow overwrites old data
+  initSingle.diff       = false;       // single ended
+  initSingle.reference  = adcRef2V5;   // internal 2.5V reference
+  initSingle.resolution = adcRes12Bit; // 12-bit resolution
+  initSingle.acqTime    = adcAcqTime4; // set acquisition time to meet minimum requirements
 
   // Select ADC input. See README for corresponding EXP header pin.
-  // *Note that internal channels are unavailable in ADC scan mode
-  ADC_ScanSingleEndedInputAdd(&initScan, adcScanInputGroup0, adcPosSelAPORT2XCH19); // Using PF3, APORT2XCH19
+  initSingle.posSel = adcPosSelAPORT2XCH19; //Using PF3, APORT2XCH19
 
-  // Set scan data valid level (DVL) to 2
-  ADC0->SCANCTRLX = (ADC0->SCANCTRLX & ~_ADC_SCANCTRLX_DVL_MASK) | (((NUM_INPUTS - 1) << _ADC_SCANCTRLX_DVL_SHIFT) & _ADC_SCANCTRLX_DVL_MASK);
-
-  // Clear ADC scan FIFO
-  ADC0->SCANFIFOCLEAR = ADC_SCANFIFOCLEAR_SCANFIFOCLEAR;
-
-  // Initialize ADC and Scans
+  // Initialize ADC and Single conversions
   ADC_Init(ADC0, &init);
-  ADC_InitScan(ADC0, &initScan);
+  ADC_InitSingle(ADC0, &initSingle);
 
-  // Enable Scan interrupts
-  ADC_IntEnable(ADC0, ADC_IEN_SCAN);
+  // Enable ADC Single Conversion Complete interrupt
+  ADC_IntEnable(ADC0, ADC_IEN_SINGLE);
 
-  // Enable ADC Interrupts
+  // Enable ADC interrupts
   NVIC_ClearPendingIRQ(ADC0_IRQn);
   NVIC_EnableIRQ(ADC0_IRQn);
-}
 
-void startADCscan(){
-  // Start next ADC conversion
-  ADC_Start(ADC0, adcStartSingle);
 }
 
 uint32_t getScannedADCdata(){
   uint32_t data;
 
   // Get data from ADC scan
-  data = ADC_DataScanGet(ADC0);
+  data = ADC_DataSingleGet(ADC0);
 
   // Convert data to mV and store to array
   adc_value = data * 2500 / 4096;

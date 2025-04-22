@@ -78,7 +78,7 @@
 void gpioInit()
 {
   gpioInit_SI7021();
-  gpioInit_LED();
+  //gpioInit_LED(); portF used for ADC
   gpioInit_PB();
 } // gpioInit()
 

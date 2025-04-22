@@ -153,9 +153,10 @@ void ADC0_IRQHandler(void)
 
   // step 3: your handling code
   // set event
-  if (interrupt_flags & ADC_IEN_SCAN){
+  if (interrupt_flags & ADC_IEN_SINGLE){
     CORE_ENTER_CRITICAL();
-    set_scheduler_event(EVENT_ADC_IEN_SCAN);
+    uint32_t adc_mv = getScannedADCdata();
+    LOG_INFO("Sound Detector mV: %lu\r\n", adc_mv);
     CORE_EXIT_CRITICAL();
   }
 }

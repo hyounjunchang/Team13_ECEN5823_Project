@@ -16,7 +16,6 @@
 #include <stdint.h>
 
 void initADC();
-void startADCscan();
 uint32_t getScannedADCdata();
 uint32_t getLastADCdata();
 #endif
