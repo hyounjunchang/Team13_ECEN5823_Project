@@ -208,7 +208,7 @@ Summary:
 
     <!--Sound Level-->
     <characteristic const="false" id="sound_level" name="Sound Level" sourceId="" uuid="00000013-38c8-433e-87ec-652a2d136289">
-      <value length="0" type="hex" variable_length="false">00</value>
+      <value length="0" type="utf-8" variable_length="true">Noisy</value>
       <properties>
         <read authenticated="false" bonded="true" encrypted="false"/>
         <notify authenticated="false" bonded="true" encrypted="false"/>

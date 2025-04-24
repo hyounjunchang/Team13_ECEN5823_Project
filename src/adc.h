@@ -14,8 +14,10 @@
 #define SRC_ADC_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 void initADC();
-uint32_t getScannedADCdata();
-uint32_t getLastADCdata();
+void getScannedADCmV(uint32_t* adc_buf);
+bool OKtoUpdateGATT();
+void setOKtoUpdateGATT(bool ok);
 #endif

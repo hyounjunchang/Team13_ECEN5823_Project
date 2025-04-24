@@ -63,7 +63,11 @@ ble_data_struct_t* get_ble_data();
 
 #if DEVICE_IS_BLE_SERVER
 void update_temp_meas_gatt_and_send_notification(int temp_in_c); // update temperature gatt and send notification
+void update_sound_level_gatt_and_send_notification(uint32_t mV);
+void update_amb_light_gatt_and_send_notification(float lux);
+uint32_t* getSoundLevelptr();
 #endif
+
 // handles all ble events, different implementation for server and client
 void handle_ble_event(sl_bt_msg_t* evt);
 

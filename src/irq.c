@@ -37,6 +37,7 @@
 #include "ble.h"
 
 #include "src/em_adc.h"
+#include "adc.h"
 
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
@@ -155,8 +156,10 @@ void ADC0_IRQHandler(void)
   // set event
   if (interrupt_flags & ADC_IEN_SINGLE){
     CORE_ENTER_CRITICAL();
-    uint32_t adc_mv = getScannedADCdata();
-    LOG_INFO("Sound Detector mV: %lu\r\n", adc_mv);
+    uint32_t* sound_level_ptr = getSoundLevelptr();
+    getScannedADCmV(sound_level_ptr);
+    LOG_INFO("Sound Detector mV: %lu\r\n", *sound_level_ptr);
+    setOKtoUpdateGATT(true);
     CORE_EXIT_CRITICAL();
   }
 }

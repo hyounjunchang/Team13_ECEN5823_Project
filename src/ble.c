@@ -23,6 +23,9 @@
 
 #include "gpio.h"
 
+#include "src/em_adc.h"
+#include "adc.h"
+
 // Include logging for this file
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
@@ -81,6 +84,13 @@ uint8_t flags = 0x00;
 
 uint8_t PB0_pressed = 0;
 uint8_t *PB0_pressed_ptr = &PB0_pressed;
+
+char sound_level[6];
+uint32_t sound_level_mv;
+
+uint32_t* getSoundLevelptr(){
+  return &sound_level_mv;
+}
 
 // for indications queue
 ble_notification_struct_t notif_to_send;
@@ -163,6 +173,19 @@ void update_temp_meas_gatt_and_send_notification(int temp_in_c){
    // update latest temperature value
    latest_temp = temp_in_c;
 }
+
+void update_sound_level_gatt_and_send_notification(uint32_t mV){
+  if (mV > 2500){
+      mV = 2500;
+  }
+  sl_status_t sc;
+
+}
+void update_amb_light_gatt_and_send_notification(float lux){
+  sl_status_t sc;
+
+}
+
 
 #endif
 
@@ -404,6 +427,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
       // refresh LCD every 8 * 125ms
       if (lazy_timer_count == 7){
         displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
+        // Start next ADC conversion
+        ADC_Start(ADC0, adcStartSingle);
+        setOKtoUpdateGATT(false);
         lazy_timer_count = 0;
       }
       else{

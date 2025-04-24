@@ -35,7 +35,8 @@
 #define adcFreq   16000000
 
 #define NUM_INPUTS 1
-uint32_t adc_value = 0; // ADC value in mV (max 2.5V)
+uint32_t adc_mv = 0; // ADC value in mV (max 2.5V)
+bool ok_to_update_gatt = false;
 
 /**************************************************************************//**
  * @brief ADC initialization
@@ -76,20 +77,20 @@ void initADC ()
 
 }
 
-uint32_t getScannedADCdata(){
+void getScannedADCmV(uint32_t* adc_buf){
   uint32_t data;
-
   // Get data from ADC scan
-  data = ADC_DataSingleGet(ADC0);
-
+  data = ADC_DataSingleGet(ADC0); // 12-bit resolution
   // Convert data to mV and store to array
-  adc_value = data * 2500 / 4096;
-
-  return adc_value;
+  adc_mv = data * 2500 / 4096; // ADC module in Blue Gecko handles 2.5V
+  *adc_buf = adc_mv;
 }
 
-uint32_t getLastADCdata(){
-  return adc_value;
+bool OKtoUpdateGATT(){
+  return ok_to_update_gatt;
 }
 
+void setOKtoUpdateGATT(bool ok){
+  ok_to_update_gatt = ok;
+}
 

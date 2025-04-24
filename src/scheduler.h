@@ -58,7 +58,6 @@ SI7021_state get_SI7021_state();
 // state machines using ble event
 void temperature_state_machine(sl_bt_msg_t* evt);
 void ambient_light_state_machine(sl_bt_msg_t* evt);
-void sound_level_state_machine(sl_bt_msg_t* evt);
 #endif
 
 #endif

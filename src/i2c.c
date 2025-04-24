@@ -3,7 +3,7 @@
  * @brief     I2C module for Blue Gecko
  *
  * @author    Hyounjun Chang, hyounjun.chang@colorado.edu
- * @date      Feb 13, 2025
+ * @date      Apr 24, 2025
  *
  * @resources Lecture 6 Slides, Lecture 8 Slides
  *
@@ -187,7 +187,7 @@ void VEML6030_initialize(){
   // Set mode
   VEML6030_cmd_data[0] = VEML6030_ALS_CONF_0;
   VEML6030_cmd_data[1] = 0b00000000; // ALS_PERS = 00, Protect # = 1, ALS_INT_EN = 0, ALS_SD = 0 (ALS power on)
-  VEML6030_cmd_data[2] = 0b00001011; // ALS_GAIN = 01, ALS_IT = 1100 for 25ms integration time
+  VEML6030_cmd_data[2] = 0b00001000; // ALS_GAIN = 01, ALS_IT = 0000 for 100ms integration time
 
   transferSequence.addr = VEML6030_ADDR << 1; // shift device address left
   transferSequence.flags = I2C_FLAG_WRITE;
@@ -243,7 +243,13 @@ void VEML6030_start_read_ambient_light_level(){
   }
 }
 
-uint16_t VEML6030_read_measured_ambient_light(){
+// converts ADC value to light measurement in lux
+float VEML6030_convert_to_lux(uint16_t adc_val){
+  // ALS_GAIN = 01, PSM = 11, ALS_IT = 0000
+  return 0.0288 * adc_val;
+}
+
+float VEML6030_read_measured_ambient_light(){
   // sends 2-byte data, MSB then LSB (big-endian)
   // uint16_t is little-endian, so you can't directly store to uint16_t
   // add values from 0
@@ -251,11 +257,6 @@ uint16_t VEML6030_read_measured_ambient_light(){
   sensor_value += (uint16_t)VEML6030_read_data[1] << 8;
 
   return sensor_value;
-}
-
-
-int8_t getSoundLevel(){
-  return rand() % 20;
 }
 
 #endif

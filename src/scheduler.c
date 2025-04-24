@@ -38,9 +38,6 @@ static SI7021_state currState_SI7021 = SI7021_IDLE;
 static VEML6030_state currState_VEML6030 = VEML6030_IDLE;
 static uint16_t VEML6030_timer_count = 0;
 
-static uint16_t sound_detector_timer_count = 0;
-
-
 i2c_transfer_target curr_i2c_transfer = I2C_TRANSFER_NONE;
 #endif
 
@@ -230,24 +227,6 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
       break;
   }
 
-}
-void sound_level_state_machine(sl_bt_msg_t* evt){
-  // start reading ADC every 1 second, 8 soft timer ticks (1 timer = 125ms)
-  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_soft_timer_id){
-      if (sound_detector_timer_count == 7){
-          // Start next ADC conversion
-          ADC_Start(ADC0, adcStartSingle);
-          sound_detector_timer_count = 0;
-      }
-      else {
-          sound_detector_timer_count++;
-      }
-      return;
-  }
-  else if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
-      return;
-  }
-  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
 }
 #endif
 
