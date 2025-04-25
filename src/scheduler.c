@@ -186,10 +186,6 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
   bool start_i2c = false;
   bool read_sensor = false;
 
-  //uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
-  //ble_data_struct_t* ble_data_ptr = get_ble_data();
-  uint16_t ambient_light_value;
-
   // start reading VEML6030 every 5 second, 8 * 5 soft timer (1 timer = 125ms)
   if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_soft_timer_id){
       if (VEML6030_timer_count == 0){
@@ -204,10 +200,12 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
           VEML6030_timer_count++;
       }
   }
+  // return on any non soft-timer event
   else{
       return;
   }
 
+  // read/start i2c every 40 soft-timer ticks
   switch(currState_VEML6030){
     case VEML6030_IDLE:
       if (start_i2c){
@@ -218,15 +216,14 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
       break;
     case VEML6030_WAIT_I2C_READ:
       if (read_sensor){
-          ambient_light_value = VEML6030_read_measured_ambient_light();
-          LOG_INFO("Current Ambient Light: %d\r\n", ambient_light_value);
+          float amb_light_lux = VEML6030_read_measured_ambient_light();
+          update_amb_light_gatt_and_send_notification(amb_light_lux);
           currState_VEML6030 = VEML6030_IDLE;
       }
       break;
     default:
       break;
   }
-
 }
 #endif
 

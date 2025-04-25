@@ -255,8 +255,7 @@ float VEML6030_read_measured_ambient_light(){
   // add values from 0
   uint16_t sensor_value = VEML6030_read_data[0];
   sensor_value += (uint16_t)VEML6030_read_data[1] << 8;
-
-  return sensor_value;
+  return VEML6030_convert_to_lux(sensor_value);
 }
 
 #endif

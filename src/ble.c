@@ -85,8 +85,15 @@ uint8_t flags = 0x00;
 uint8_t PB0_pressed = 0;
 uint8_t *PB0_pressed_ptr = &PB0_pressed;
 
+// sound detector sensor
 char sound_level[6];
+char* sound_ptr = &sound_level[0];
 uint32_t sound_level_mv;
+
+// ambient light sensor
+uint8_t amb_light_buffer[5];
+uint8_t *amb_light_ptr = &amb_light_buffer[0];
+
 
 uint32_t* getSoundLevelptr(){
   return &sound_level_mv;
@@ -161,7 +168,7 @@ void update_temp_meas_gatt_and_send_notification(int temp_in_c){
       LOG_ERROR("Error setting GATT for HTM, Error Code: 0x%x\r\n", (uint16_t)sc);
   }
 
-  // update indication to send
+  // update notification to send
   notif_to_send.attribute = gattdb_temperature_measurement;
   notif_to_send.offset = 0;
   notif_to_send.value_len = 5;
@@ -175,11 +182,38 @@ void update_temp_meas_gatt_and_send_notification(int temp_in_c){
 }
 
 void update_sound_level_gatt_and_send_notification(uint32_t mV){
-  if (mV > 2500){
-      mV = 2500;
-  }
   sl_status_t sc;
+  size_t str_len;
+  if (mV > 100){
+      sound_ptr = "loud";
+      str_len = 4;
+  }
+  else if (mV > 45){
+      sound_ptr = "noisy";
+      str_len = 5;
+  }
+  else{
+      sound_ptr = "quiet";
+      str_len = 5;
+  }
 
+  // write to gatt_db
+  sc = sl_bt_gatt_server_write_attribute_value(
+        gattdb_sound_level, // handle from autogen/gatt_db.h
+        0, // offset
+        str_len, // length
+        sound_ptr
+  );
+  if (sc != SL_STATUS_OK) {
+      LOG_ERROR("Error setting GATT for Sound Level, Error Code: 0x%x\r\n", (uint16_t)sc);
+  }
+
+  // update notification to send
+  notif_to_send.attribute = gattdb_sound_level;
+  notif_to_send.offset = 0;
+  notif_to_send.value_len = str_len;
+  notif_to_send.value = (uint8_t*)sound_ptr;
+  send_notification(&notif_to_send);
 }
 void update_amb_light_gatt_and_send_notification(float lux){
   sl_status_t sc;
@@ -409,13 +443,18 @@ void handle_ble_event(sl_bt_msg_t* evt){
                   gpioLed0SetOff();
               }
           }
+          else if (characteristic == gattdb_sound_level){
+              if (gatt_server_char_status.client_config_flags & sl_bt_gatt_notification){
+                  ble_data.ok_to_send_sound_level_notifications = true;
+              }
+              else{
+                  ble_data.ok_to_send_sound_level_notifications = false;
+              }
+          }
+          else if (characteristic == gattdb_ambient_light_level){
+
+          }
       }
-      /* GATT indication received
-      if(gatt_server_char_status.status_flags & sl_bt_gatt_server_confirmation){
-          ble_data.indication_in_flight = false;
-          //LOG_INFO("GATT indication received\r\n");
-      }
-      */
       break;
     // Indicates confirmation from the remote GATT client has not been
     // received within 30 seconds after an indication was sent
@@ -433,6 +472,11 @@ void handle_ble_event(sl_bt_msg_t* evt){
         lazy_timer_count = 0;
       }
       else{
+          if (OKtoUpdateGATT()){
+              update_sound_level_gatt_and_send_notification(sound_level_mv);
+              setOKtoUpdateGATT(false);
+          }
+
           lazy_timer_count++;
       }
       break;

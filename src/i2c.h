@@ -44,7 +44,7 @@ uint8_t* getReadData_buf();
 // Ambient Light Sensor
 void VEML6030_initialize();
 void VEML6030_start_read_ambient_light_level();
-float VEML6030_convert_loudness(uint16_t adc_val);
+float VEML6030_convert_to_lux(uint16_t adc_val);
 float VEML6030_read_measured_ambient_light();
 
 #endif
