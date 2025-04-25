@@ -91,9 +91,8 @@ char* sound_ptr = &sound_level[0];
 uint32_t sound_level_mv;
 
 // ambient light sensor
-uint8_t amb_light_buffer[5];
-uint8_t *amb_light_ptr = &amb_light_buffer[0];
-
+float amb_light_buffer;
+float* amb_light_ptr = &amb_light_buffer;
 
 uint32_t* getSoundLevelptr(){
   return &sound_level_mv;
@@ -125,11 +124,11 @@ bool send_notification(ble_notification_struct_t *notification){
       !ble_data.ok_to_send_htm_notifications){
       return false;
   }
-  else if (notification->attribute == gattdb_ambient_light_level &&
+  else if (notification->attribute == gattdb_illuminance &&
       !ble_data.ok_to_send_amb_light_notifications){
       return false;
   }
-  else if (notification->attribute == gattdb_sound_level &&
+  else if (notification->attribute == gattdb_audio_input_description &&
       !ble_data.ok_to_send_sound_level_notifications){
       return false;
   }
@@ -199,25 +198,43 @@ void update_sound_level_gatt_and_send_notification(uint32_t mV){
 
   // write to gatt_db
   sc = sl_bt_gatt_server_write_attribute_value(
-        gattdb_sound_level, // handle from autogen/gatt_db.h
+        gattdb_audio_input_description, // handle from autogen/gatt_db.h
         0, // offset
         str_len, // length
-        sound_ptr
+        (uint8_t*)sound_ptr
   );
   if (sc != SL_STATUS_OK) {
       LOG_ERROR("Error setting GATT for Sound Level, Error Code: 0x%x\r\n", (uint16_t)sc);
   }
 
   // update notification to send
-  notif_to_send.attribute = gattdb_sound_level;
+  notif_to_send.attribute = gattdb_audio_input_description;
   notif_to_send.offset = 0;
   notif_to_send.value_len = str_len;
   notif_to_send.value = (uint8_t*)sound_ptr;
   send_notification(&notif_to_send);
 }
 void update_amb_light_gatt_and_send_notification(float lux){
+  amb_light_buffer = lux;
   sl_status_t sc;
 
+  // write to gatt_db
+  sc = sl_bt_gatt_server_write_attribute_value(
+        gattdb_illuminance, // handle from autogen/gatt_db.h
+        0, // offset
+        4, // length
+        (uint8_t*)amb_light_ptr
+  );
+  if (sc != SL_STATUS_OK) {
+      LOG_ERROR("Error setting GATT for Sound Level, Error Code: 0x%x\r\n", (uint16_t)sc);
+  }
+
+  // update notification to send
+  notif_to_send.attribute = gattdb_illuminance;
+  notif_to_send.offset = 0;
+  notif_to_send.value_len = 4;
+  notif_to_send.value = (uint8_t*)amb_light_ptr;
+  send_notification(&notif_to_send);
 }
 
 
@@ -443,7 +460,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
                   gpioLed0SetOff();
               }
           }
-          else if (characteristic == gattdb_sound_level){
+          else if (characteristic == gattdb_audio_input_description){
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_notification){
                   ble_data.ok_to_send_sound_level_notifications = true;
               }
@@ -451,8 +468,13 @@ void handle_ble_event(sl_bt_msg_t* evt){
                   ble_data.ok_to_send_sound_level_notifications = false;
               }
           }
-          else if (characteristic == gattdb_ambient_light_level){
-
+          else if (characteristic == gattdb_illuminance){
+              if (gatt_server_char_status.client_config_flags & sl_bt_gatt_notification){
+                  ble_data.ok_to_send_amb_light_notifications = true;
+              }
+              else{
+                  ble_data.ok_to_send_amb_light_notifications = false;
+              }
           }
       }
       break;

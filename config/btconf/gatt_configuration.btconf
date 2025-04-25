@@ -179,23 +179,14 @@ Summary:
         <notify authenticated="false" bonded="true" encrypted="false"/>
       </properties>
     </characteristic>
-
-    <!--Space Ready-->
-    <characteristic const="false" id="space_ready" name="Space Ready" sourceId="" uuid="00000021-38c8-433e-87ec-652a2d136289">
-      <value length="1" type="hex" variable_length="false">00</value>
-      <properties>
-        <read authenticated="false" bonded="true" encrypted="false"/>
-        <notify authenticated="false" bonded="true" encrypted="false"/>
-      </properties>
-    </characteristic>
   </service>
 
   <!--Ambient Light Measurement-->
   <service advertise="true" id="ambient_light_measurement" name="Ambient Light Measurement" requirement="mandatory" sourceId="" type="primary" uuid="00000002-38c8-433e-87ec-652a2d136289">
 
-    <!--Ambient Light Level-->
-    <characteristic const="false" id="ambient_light_level" name="Ambient Light Level" sourceId="" uuid="00000012-38c8-433e-87ec-652a2d136289">
-      <value length="0" type="hex" variable_length="false">00</value>
+    <!--Illuminance-->
+    <characteristic const="false" id="illuminance" name="Illuminance" sourceId="org.bluetooth.characteristic.illuminance" uuid="2AFB">
+      <value length="4" type="hex" variable_length="false">00</value>
       <properties>
         <read authenticated="false" bonded="true" encrypted="false"/>
         <notify authenticated="false" bonded="true" encrypted="false"/>
@@ -203,11 +194,11 @@ Summary:
     </characteristic>
   </service>
 
-  <!--Sound Measurement-->
-  <service advertise="true" id="sound_measurement" name="Sound Measurement" requirement="mandatory" sourceId="" type="primary" uuid="00000003-38c8-433e-87ec-652a2d136289">
+  <!--Microphone Control-->
+  <service advertise="true" id="microphone_control" name="Microphone Control" requirement="mandatory" sourceId="org.bluetooth.service.control.microphone" type="primary" uuid="184D">
 
-    <!--Sound Level-->
-    <characteristic const="false" id="sound_level" name="Sound Level" sourceId="" uuid="00000013-38c8-433e-87ec-652a2d136289">
+    <!--Audio Input Description-->
+    <characteristic const="false" id="audio_input_description" name="Audio Input Description" sourceId="org.bluetooth.characteristic.audio_input.description" uuid="2B7C">
       <value length="0" type="utf-8" variable_length="true">noisy</value>
       <properties>
         <read authenticated="false" bonded="true" encrypted="false"/>

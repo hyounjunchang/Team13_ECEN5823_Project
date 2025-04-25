@@ -27,11 +27,10 @@ extern const sli_bt_gattdb_t gattdb;
 #define gattdb_location_name_0                33
 #define gattdb_server_characteristic_configuration 34
 #define gattdb_space_occupied                 36
-#define gattdb_space_ready                    39
-#define gattdb_ambient_light_measurement      41
-#define gattdb_ambient_light_level            43
-#define gattdb_sound_measurement              45
-#define gattdb_sound_level                    47
+#define gattdb_ambient_light_measurement      38
+#define gattdb_illuminance                    40
+#define gattdb_microphone_control             42
+#define gattdb_audio_input_description        44
 
 
 #endif // __GATT_DB_H
