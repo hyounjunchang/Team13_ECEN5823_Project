@@ -54,6 +54,7 @@ typedef struct {
   bool ok_to_send_htm_notifications;
   bool ok_to_send_amb_light_notifications;
   bool ok_to_send_sound_level_notifications;
+  bool ok_to_send_occupied_notifications;
   bool passkey_received;
   bool is_bonded;
 } ble_data_struct_t;
@@ -65,6 +66,7 @@ ble_data_struct_t* get_ble_data();
 void update_temp_meas_gatt_and_send_notification(int temp_in_c); // update temperature gatt and send notification
 void update_sound_level_gatt_and_send_notification(uint32_t mV);
 void update_amb_light_gatt_and_send_notification(float lux);
+void update_space_occupied_gatt_and_send_notification();
 uint32_t* getSoundLevelptr();
 #endif
 

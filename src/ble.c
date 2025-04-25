@@ -70,6 +70,7 @@ ble_data_struct_t ble_data = {.myAddress = {{0}}, .myAddressType = 0,
                               .ok_to_send_htm_notifications = false,
                               .ok_to_send_amb_light_notifications = false,
                               .ok_to_send_sound_level_notifications = false,
+                              .ok_to_send_occupied_notifications = false,
                               .passkey_received = false,
                               .is_bonded = false};
 
@@ -86,13 +87,18 @@ uint8_t PB0_pressed = 0;
 uint8_t *PB0_pressed_ptr = &PB0_pressed;
 
 // sound detector sensor
-char sound_level[6];
-char* sound_ptr = &sound_level[0];
+char sound_level_str[6] = {0};
+char* sound_ptr = &sound_level_str[0];
 uint32_t sound_level_mv;
 
 // ambient light sensor
-float amb_light_buffer;
-float* amb_light_ptr = &amb_light_buffer;
+uint16_t amb_light_val;
+uint16_t* amb_light_ptr = &amb_light_val;
+
+// space occupied
+bool space_occupied = false;
+char occupied_str[10] = {0}; // Available or Occupied
+char* occupied_ptr = &occupied_str[0];
 
 uint32_t* getSoundLevelptr(){
   return &sound_level_mv;
@@ -101,12 +107,13 @@ uint32_t* getSoundLevelptr(){
 // for indications queue
 ble_notification_struct_t notif_to_send;
 
+// storing last values
+int latest_temp = 0;
+
 #define QUEUE_DEPTH 10
 // to send indications via timer
 uint8_t lazy_timer_count = 0;
 #endif
-
-int latest_temp = 0;
 
 #if DEVICE_IS_BLE_SERVER
 #define FROM_INPUT true
@@ -120,16 +127,22 @@ int latest_temp = 0;
 bool send_notification(ble_notification_struct_t *notification){
   sl_status_t sc;
   // do not send notification if not set
+  /*
   if (notification->attribute == gattdb_temperature_measurement &&
       !ble_data.ok_to_send_htm_notifications){
       return false;
   }
-  else if (notification->attribute == gattdb_illuminance &&
+  */
+  if (notification->attribute == gattdb_illuminance &&
       !ble_data.ok_to_send_amb_light_notifications){
       return false;
   }
   else if (notification->attribute == gattdb_audio_input_description &&
       !ble_data.ok_to_send_sound_level_notifications){
+      return false;
+  }
+  else if (notification->attribute == gattdb_space_occupied &&
+      !ble_data.ok_to_send_occupied_notifications){
       return false;
   }
 
@@ -145,6 +158,12 @@ bool send_notification(ble_notification_struct_t *notification){
   return true;
 }
 
+// dummy function, since temp sensor is disabled
+void update_temp_meas_gatt_and_send_notification(int temp_in_c){
+  latest_temp = temp_in_c;
+}
+
+/*
 // Referenced from Lecture 10 slides
 void update_temp_meas_gatt_and_send_notification(int temp_in_c){
   sl_status_t sc;
@@ -174,11 +193,12 @@ void update_temp_meas_gatt_and_send_notification(int temp_in_c){
   notif_to_send.value =  &htm_temperature_buffer[0]; // in IEEE-11073 format
   send_notification(&notif_to_send);
 
-   // print temperature on lcd
-   displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", temp_in_c);
-   // update latest temperature value
-   latest_temp = temp_in_c;
+  // print temperature on lcd
+  displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp = %d", temp_in_c);
+  // update latest temperature value
+  latest_temp = temp_in_c;
 }
+*/
 
 void update_sound_level_gatt_and_send_notification(uint32_t mV){
   sl_status_t sc;
@@ -213,30 +233,84 @@ void update_sound_level_gatt_and_send_notification(uint32_t mV){
   notif_to_send.value_len = str_len;
   notif_to_send.value = (uint8_t*)sound_ptr;
   send_notification(&notif_to_send);
+
+  // update sound level on lcd
+  displayPrintf(DISPLAY_ROW_SOUNDLEVEL, "Area is %s", sound_ptr);
 }
+
 void update_amb_light_gatt_and_send_notification(float lux){
-  amb_light_buffer = lux;
+  if (lux > 1888){ // max measurable from sensor
+      amb_light_val = 1888;
+  }
+  else{
+      amb_light_val = (uint16_t)lux;
+  }
   sl_status_t sc;
 
   // write to gatt_db
   sc = sl_bt_gatt_server_write_attribute_value(
         gattdb_illuminance, // handle from autogen/gatt_db.h
         0, // offset
-        4, // length
+        2, // length
         (uint8_t*)amb_light_ptr
   );
   if (sc != SL_STATUS_OK) {
-      LOG_ERROR("Error setting GATT for Sound Level, Error Code: 0x%x\r\n", (uint16_t)sc);
+      LOG_ERROR("Error setting GATT for Ambient Light Level, Error Code: 0x%x\r\n", (uint16_t)sc);
   }
 
   // update notification to send
   notif_to_send.attribute = gattdb_illuminance;
   notif_to_send.offset = 0;
-  notif_to_send.value_len = 4;
+  notif_to_send.value_len = 2;
   notif_to_send.value = (uint8_t*)amb_light_ptr;
   send_notification(&notif_to_send);
+
+  // update ambient light on lcd
+  displayPrintf(DISPLAY_ROW_AMBLIGHTVALUE, "Light = %u lx", amb_light_val);
 }
 
+void update_space_occupied_gatt_and_send_notification(){
+  sl_status_t sc;
+  size_t str_len;
+  if (space_occupied){
+      occupied_ptr = "Occupied";
+      str_len = 8;
+  }
+  else{
+      occupied_ptr = "Available";
+      str_len = 9;
+  }
+
+  // write to gatt_db
+  sc = sl_bt_gatt_server_write_attribute_value(
+        gattdb_space_occupied, // handle from autogen/gatt_db.h
+        0, // offset
+        str_len, // length
+        (uint8_t*)occupied_ptr
+  );
+  if (sc != SL_STATUS_OK) {
+      LOG_ERROR("Error setting GATT for Space Occupied, Error Code: 0x%x\r\n", (uint16_t)sc);
+  }
+
+  // update notification to send
+  notif_to_send.attribute = gattdb_space_occupied;
+  notif_to_send.offset = 0;
+  notif_to_send.value_len = str_len;
+  notif_to_send.value = (uint8_t*)occupied_ptr;
+  send_notification(&notif_to_send);
+
+  // update space occupied for LCD
+  displayPrintf(DISPLAY_ROW_OCCUPIED, "%s", occupied_ptr);
+
+  if (space_occupied){
+      displayPrintf(DISPLAY_ROW_ACTION, "Press PB0 to");
+      displayPrintf(DISPLAY_ROW_ACTION2, "mark available");
+  }
+  else{
+      displayPrintf(DISPLAY_ROW_ACTION, "Press PB0 to");
+      displayPrintf(DISPLAY_ROW_ACTION2, "mark occupied");
+  }
+}
 
 #endif
 
@@ -255,7 +329,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
 #if DEVICE_IS_BLE_SERVER // for server states
   sl_bt_evt_gatt_server_characteristic_status_t gatt_server_char_status;
-  unsigned int PB0_val;
 #endif
 
 #if DEVICE_IS_BLE_SERVER
@@ -315,28 +388,27 @@ void handle_ble_event(sl_bt_msg_t* evt){
       }
 
       // Write Info to LCD Display
-      displayPrintf(DISPLAY_ROW_NAME, "Server");
+      displayPrintf(DISPLAY_ROW_NAME, "Study Space 1");
       displayPrintf(DISPLAY_ROW_BTADDR, "%02X:%02X:%02X:%02X:%02X:%02X",
                     ble_addr[0], ble_addr[1], ble_addr[2],
                     ble_addr[3], ble_addr[4], ble_addr[5]);
       displayPrintf(DISPLAY_ROW_CONNECTION, "Advertising");
-      displayPrintf(DISPLAY_ROW_ASSIGNMENT, "A8");
+      displayPrintf(DISPLAY_ROW_TEAMNAME, "Team 13");
 
-      // Display PB0 state
-      PB0_val = gpioRead_PB0(); // 1 if released, 0 if pressed
-      // low if pressed
-      if (PB0_val){
-          displayPrintf(DISPLAY_ROW_9, "Button Released");
+      if (space_occupied){
+          displayPrintf(DISPLAY_ROW_OCCUPIED, "Occupied");
+          displayPrintf(DISPLAY_ROW_ACTION, "Press PB0 to");
+          displayPrintf(DISPLAY_ROW_ACTION2, "mark available");
       }
       else{
-          displayPrintf(DISPLAY_ROW_9, "Button Pressed");
+          displayPrintf(DISPLAY_ROW_OCCUPIED, "Available");
+          displayPrintf(DISPLAY_ROW_ACTION, "Press PB0 to");
+          displayPrintf(DISPLAY_ROW_ACTION2, "mark occupied");
       }
-
 
       // update security manager, enable bonding
       sl_bt_sm_configure(0x2F,   // bit 1 flag enables bonding
                          sl_bt_sm_io_capability_displayyesno);
-
       break;
     // Indicates that a new connection was opened
     case sl_bt_evt_connection_opened_id:
@@ -374,6 +446,7 @@ void handle_ble_event(sl_bt_msg_t* evt){
       ble_data.ok_to_send_htm_notifications = false;
       ble_data.ok_to_send_amb_light_notifications = false;
       ble_data.ok_to_send_sound_level_notifications= false;
+      ble_data.ok_to_send_occupied_notifications = false;
       ble_data.passkey_received = false;
       ble_data.is_bonded = false;
       // turn LED off
@@ -414,7 +487,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
    // external events, only handles PB0 press here
     case sl_bt_evt_system_external_signal_id:
       if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_PRESS){
-          displayPrintf(DISPLAY_ROW_9, "Button Pressed");
           // confirm BLE passkey if waiting
           if (ble_data.passkey_received){
               sc = sl_bt_sm_passkey_confirm(ble_data.connectionHandle, 1);
@@ -423,9 +495,14 @@ void handle_ble_event(sl_bt_msg_t* evt){
               }
               ble_data.passkey_received = false;
           }
+          // update whether study space occupied or not
+          else{
+              space_occupied = !space_occupied;
+              update_space_occupied_gatt_and_send_notification();
+          }
       }
       else if (evt->data.evt_system_external_signal.extsignals & BLE_PB0_RELEASE){
-          displayPrintf(DISPLAY_ROW_9, "Button Released");
+
       }
       break;
     // ******************************************************
@@ -445,12 +522,13 @@ void handle_ble_event(sl_bt_msg_t* evt){
 
       // CCCD changed
       if(gatt_server_char_status.status_flags & sl_bt_gatt_server_client_config){
+          /*
           if (characteristic == gattdb_temperature_measurement){ // handle from gatt_db.h
               // notification flag
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_notification){
                    ble_data.ok_to_send_htm_notifications= true;
                    // print temperature on lcd
-                   displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp=%d", latest_temp);
+                   displayPrintf(DISPLAY_ROW_TEMPVALUE, "Temp = %d", latest_temp);
                    gpioLed0SetOn();
               }
               else{
@@ -459,8 +537,8 @@ void handle_ble_event(sl_bt_msg_t* evt){
                   displayPrintf(DISPLAY_ROW_TEMPVALUE, "");
                   gpioLed0SetOff();
               }
-          }
-          else if (characteristic == gattdb_audio_input_description){
+          }*/
+          if (characteristic == gattdb_audio_input_description){
               if (gatt_server_char_status.client_config_flags & sl_bt_gatt_notification){
                   ble_data.ok_to_send_sound_level_notifications = true;
               }
@@ -474,6 +552,14 @@ void handle_ble_event(sl_bt_msg_t* evt){
               }
               else{
                   ble_data.ok_to_send_amb_light_notifications = false;
+              }
+          }
+          else if (characteristic == gattdb_space_occupied){
+              if (gatt_server_char_status.client_config_flags & sl_bt_gatt_notification){
+                  ble_data.ok_to_send_occupied_notifications = true;
+              }
+              else{
+                  ble_data.ok_to_send_occupied_notifications = false;
               }
           }
       }
@@ -515,6 +601,9 @@ void handle_ble_event(sl_bt_msg_t* evt){
       // display passkey
       displayPrintf(DISPLAY_ROW_PASSKEY, "Passkey %06u", passkey);
       displayPrintf(DISPLAY_ROW_ACTION, "Confirm with PB0");
+
+      // clear other action rows
+      displayPrintf(DISPLAY_ROW_ACTION2, "");
       break;
     case sl_bt_evt_sm_bonded_id:
       displayPrintf(DISPLAY_ROW_CONNECTION, "Bonded");
@@ -522,6 +611,18 @@ void handle_ble_event(sl_bt_msg_t* evt){
       displayPrintf(DISPLAY_ROW_ACTION, "");
       // reset passkey flags
       ble_data.is_bonded = true;
+
+      // display space occupied action again
+      if (space_occupied){
+          displayPrintf(DISPLAY_ROW_OCCUPIED, "Occupied");
+          displayPrintf(DISPLAY_ROW_ACTION, "Press PB0 to");
+          displayPrintf(DISPLAY_ROW_ACTION2, "mark available");
+      }
+      else{
+          displayPrintf(DISPLAY_ROW_OCCUPIED, "Available");
+          displayPrintf(DISPLAY_ROW_ACTION, "Press PB0 to");
+          displayPrintf(DISPLAY_ROW_ACTION2, "mark occupied");
+      }
       break;
     case sl_bt_evt_sm_bonding_failed_id:
       LOG_ERROR("Bonding Failed\r\n");
