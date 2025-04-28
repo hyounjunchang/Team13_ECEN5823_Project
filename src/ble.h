@@ -30,16 +30,10 @@
 #define NO_FLAG 0x0
 #define BLE_LETIMER0_UF_FLAG 0x1
 #define BLE_LETIMER0_COMP1_FLAG 0x2
-#define BLE_I2C_SI7021_TRANSFER_FLAG 0x4
-#define BLE_PB0_PRESS 0x8
-#define BLE_PB0_RELEASE 0x10
-#define BLE_PB1_PRESS 0x20 // gatt read request if client
-#define BLE_PB1_RELEASE 0x40
-#define BLE_PB0_PB1_PRESS 0x80
-#define BLE_PB0_PB1_RELEASE 0x100 // set button indication if client
-#define BLE_PB_UNDEFINED 0x200
-#define BLE_PB_MASK 0x3F8
-#define BLE_I2C_VEML6030_TRANSFER_FLAG 0x400
+#define BLE_PB0_PRESS 0x4
+#define BLE_PB0_RELEASE 0x8
+#define BLE_I2C_VEML6030_TRANSFER_FLAG 0x10
+#define BLE_ADC_COMPLETE_FLAG 0x20
 
 // BLE Data Structure, save all of our private BT data in here.
 // Modern C (circa 2021 does it this way)
@@ -67,7 +61,6 @@ void update_temp_meas_gatt_and_send_notification(int temp_in_c); // update tempe
 void update_sound_level_gatt_and_send_notification(uint32_t mV);
 void update_amb_light_gatt_and_send_notification(float lux);
 void update_space_occupied_gatt_and_send_notification();
-uint32_t* getSoundLevelptr();
 #endif
 
 // handles all ble events, different implementation for server and client

@@ -24,7 +24,8 @@ typedef enum{
     EVENT_LETIMER0_UF,
     EVENT_LETIMER0_COMP1,
     EVENT_I2C_TRANSFER,
-    EVENT_PB
+    EVENT_PB,
+    EVENT_ADC_CONVERSION
 } scheduler_event;
 
 #if DEVICE_IS_BLE_SERVER
@@ -50,8 +51,11 @@ void set_scheduler_event(scheduler_event event);
 void temperature_state_machine(sl_bt_msg_t* evt);
 void ambient_light_state_machine(sl_bt_msg_t* evt);
 
+void sound_detector_update(sl_bt_msg_t* evt);
 void lcd_display_update(sl_bt_msg_t* evt);
 
+// for storing from IRQ
+uint32_t* getSoundLevelptr();
 #endif
 
 #endif

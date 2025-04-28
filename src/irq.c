@@ -75,9 +75,14 @@ void LETIMER0_IRQHandler(){
       letimer_uf_count++;
       CORE_EXIT_CRITICAL();
 
-      // Start next ADC conversion
+      // Start next ADC conversion every 1 sec
       ADC_IntEnable(ADC0, ADC_IEN_SINGLE);
       ADC_Start(ADC0, adcStartSingle);
+
+      // read ambient_light every 5 sec
+      if (letimer_uf_count % 5 == 0){
+          VEML6030_start_read_ambient_light_level();
+      }
   }
   if (interrupt_flags & LETIMER_IEN_COMP1){
      set_timerwait_done(); // for timerWaitUs_polled()
@@ -157,10 +162,11 @@ void ADC0_IRQHandler(void)
   // update value in buffer (doing this outside IRQ creates resource problems)
   if (interrupt_flags & ADC_IEN_SINGLE){
     CORE_ENTER_CRITICAL();
-    uint32_t sound_mv = ADC_DataSingleGet(ADC0); // ADC scan 12-bit resolution
+    uint32_t* sound_ptr =  getSoundLevelptr();
+    *sound_ptr = ADC_DataSingleGet(ADC0); // ADC scan 12-bit resolution
+    *sound_ptr = (*sound_ptr) * 2500 / 4096; // ADC module in Blue Gecko handles 2.5V
+    set_scheduler_event(EVENT_ADC_CONVERSION);
     CORE_EXIT_CRITICAL();
-    sound_mv = sound_mv * 2500 / 4096; // ADC module in Blue Gecko handles 2.5V
-    update_sound_level_gatt_and_send_notification(sound_mv);
   }
 }
 

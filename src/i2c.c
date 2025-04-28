@@ -124,6 +124,15 @@ void VEML6030_initialize(){
 
 // since refresh time = 4100ms, call this every >5 sec
 void VEML6030_start_read_ambient_light_level(){
+  // Sleep at EM1 during I2C
+  if (LOWEST_ENERGY_MODE == 2){
+     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  if (LOWEST_ENERGY_MODE == 3){
+     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
+  }
+  NVIC_EnableIRQ(I2C0_IRQn); // since updated state has I2C transfer, enable IRQ
   // Set mode
   VEML6030_cmd_data[0] = VEML6030_ALS;
 
@@ -136,7 +145,7 @@ void VEML6030_start_read_ambient_light_level(){
 
   I2C_TransferReturn_TypeDef transferStatus;
   // receving SW fault if NVIC interrupt for I2C_Transfer is used, until this is fixed I2CSPM useds
-  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
+  transferStatus = I2C_TransferInit(I2C0, &transferSequence);
   if (transferStatus < 0) {
     LOG_ERROR("%d\r\n", transferStatus);
   }

@@ -89,7 +89,6 @@ uint8_t *PB0_pressed_ptr = &PB0_pressed;
 // sound detector sensor
 char sound_level_str[6] = {0};
 char* sound_ptr = &sound_level_str[0];
-uint32_t sound_level_mv;
 
 // ambient light sensor
 uint16_t amb_light_val;
@@ -99,10 +98,6 @@ uint16_t* amb_light_ptr = &amb_light_val;
 bool space_occupied = false;
 char occupied_str[10] = {0}; // Available or Occupied
 char* occupied_ptr = &occupied_str[0];
-
-uint32_t* getSoundLevelptr(){
-  return &sound_level_mv;
-}
 
 // for indications queue
 ble_notification_struct_t notif_to_send;

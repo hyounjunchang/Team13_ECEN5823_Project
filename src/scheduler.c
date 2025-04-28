@@ -32,14 +32,16 @@
 #define INCLUDE_LOG_DEBUG 1
 #include "src/log.h"
 
-#if DEVICE_IS_BLE_SERVER
-static uint16_t VEML6030_timer_count = 0;
-#endif
+// store sound
+uint32_t sound_level;
+
+uint32_t* getSoundLevelptr(){
+  return &sound_level;
+}
 
 // edited from Lecture 6 slides
 // sets event flag for future use
 void set_scheduler_event(scheduler_event event){
-#if DEVICE_IS_BLE_SERVER
   sl_status_t sc;
   unsigned int PB0_val;
   CORE_DECLARE_IRQ_STATE;
@@ -90,10 +92,17 @@ void set_scheduler_event(scheduler_event event){
           }
       }
       break;
+    case EVENT_ADC_CONVERSION:
+      CORE_ENTER_CRITICAL();
+      sc = sl_bt_external_signal(BLE_ADC_COMPLETE_FLAG);
+      CORE_EXIT_CRITICAL();
+      if (sc != SL_STATUS_OK){
+          LOG_ERROR("Error setting BLE_SOUND_ADC_FLAG, Error Code: 0x%x\r\n", (uint16_t)sc);
+      }
+      break;
     default:
       break;
   }
-#endif
 }
 
 #if DEVICE_IS_BLE_SERVER
@@ -106,21 +115,22 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
   }
   uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
 
-  // start reading VEML6030 every 5 second
-  if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
-      if (VEML6030_timer_count == 0){
-          VEML6030_start_read_ambient_light_level();
-          VEML6030_timer_count++;
-      }
-      else if(VEML6030_timer_count == 4){
-          float amb_light_lux = VEML6030_read_measured_ambient_light();
-          update_amb_light_gatt_and_send_notification(amb_light_lux);
-          VEML6030_timer_count = 0;
-      }
-      else {
-          VEML6030_timer_count++;
-      }
+  if (ble_event_flags & BLE_I2C_VEML6030_TRANSFER_FLAG){
+      float amb_light_lux = VEML6030_read_measured_ambient_light();
+      update_amb_light_gatt_and_send_notification(amb_light_lux);
   }
+}
+
+void sound_detector_update(sl_bt_msg_t* evt){
+  // only update on external signal (non-bluetooth)
+    if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+        return;
+    }
+    uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+
+    if (ble_event_flags & BLE_ADC_COMPLETE_FLAG){
+        update_sound_level_gatt_and_send_notification(sound_level);
+    }
 }
 
 void lcd_display_update(sl_bt_msg_t* evt){
