@@ -17,7 +17,4 @@
 #include <stdbool.h>
 
 void initADC();
-void getScannedADCmV(uint32_t* adc_buf);
-bool OKtoUpdateGATT();
-void setOKtoUpdateGATT(bool ok);
 #endif

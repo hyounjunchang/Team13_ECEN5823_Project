@@ -50,7 +50,6 @@ void set_scheduler_event(scheduler_event event);
 void temperature_state_machine(sl_bt_msg_t* evt);
 void ambient_light_state_machine(sl_bt_msg_t* evt);
 
-void sound_detector_update(sl_bt_msg_t* evt);
 void lcd_display_update(sl_bt_msg_t* evt);
 
 #endif

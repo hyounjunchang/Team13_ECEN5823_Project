@@ -315,7 +315,6 @@ void sl_bt_on_event(sl_bt_msg_t *evt)
   // sequence through states driven by events
 #if DEVICE_IS_BLE_SERVER
   ambient_light_state_machine(evt);
-  sound_detector_update(evt);
 #endif
 
 

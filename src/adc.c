@@ -76,21 +76,3 @@ void initADC ()
   NVIC_EnableIRQ(ADC0_IRQn);
 
 }
-
-void getScannedADCmV(uint32_t* adc_buf){
-  uint32_t data;
-  // Get data from ADC scan
-  data = ADC_DataSingleGet(ADC0); // 12-bit resolution
-  // Convert data to mV and store to array
-  adc_mv = data * 2500 / 4096; // ADC module in Blue Gecko handles 2.5V
-  *adc_buf = adc_mv;
-}
-
-bool OKtoUpdateGATT(){
-  return ok_to_update_gatt;
-}
-
-void setOKtoUpdateGATT(bool ok){
-  ok_to_update_gatt = ok;
-}
-

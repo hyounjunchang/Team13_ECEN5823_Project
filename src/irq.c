@@ -74,14 +74,12 @@ void LETIMER0_IRQHandler(){
       CORE_ENTER_CRITICAL();
       letimer_uf_count++;
       CORE_EXIT_CRITICAL();
+
+      // Start next ADC conversion
+      ADC_IntEnable(ADC0, ADC_IEN_SINGLE);
+      ADC_Start(ADC0, adcStartSingle);
   }
   if (interrupt_flags & LETIMER_IEN_COMP1){
-     // toggle led for test mode
-     #ifdef TEST_MODE
-       gpioLed0Toggle();
-       TEST_MODE_reset_timerwait_irq_state();
-     #endif
-
      set_timerwait_done(); // for timerWaitUs_polled()
      set_scheduler_event(EVENT_LETIMER0_COMP1);
      LETIMER_IntDisable(LETIMER0, LETIMER_IEN_COMP1);
@@ -108,8 +106,10 @@ void I2C0_IRQHandler(void) {
   I2C_TransferReturn_TypeDef transferStatus;
   transferStatus = I2C_Transfer(I2C0);
   if (transferStatus == i2cTransferDone) {
-      // set event
+      CORE_DECLARE_IRQ_STATE;
+      CORE_ENTER_CRITICAL();
       set_scheduler_event(EVENT_I2C_TRANSFER);
+      CORE_EXIT_CRITICAL();
 
       // Disable IRQ
       NVIC_DisableIRQ(I2C0_IRQn);
@@ -150,16 +150,17 @@ void ADC0_IRQHandler(void)
   uint32_t interrupt_flags = ADC_IntGetEnabled(ADC0);
 
   // step 2: clear pending interrupts in peripheral
+  ADC_IntDisable(ADC0, interrupt_flags);
   ADC_IntClear(ADC0, interrupt_flags);
 
   // step 3: your handling code
   // update value in buffer (doing this outside IRQ creates resource problems)
   if (interrupt_flags & ADC_IEN_SINGLE){
     CORE_ENTER_CRITICAL();
-    uint32_t* sound_level_ptr = getSoundLevelptr();
-    getScannedADCmV(sound_level_ptr);
-    setOKtoUpdateGATT(true);
+    uint32_t sound_mv = ADC_DataSingleGet(ADC0); // ADC scan 12-bit resolution
     CORE_EXIT_CRITICAL();
+    sound_mv = sound_mv * 2500 / 4096; // ADC module in Blue Gecko handles 2.5V
+    update_sound_level_gatt_and_send_notification(sound_mv);
   }
 }
 

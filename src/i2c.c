@@ -136,8 +136,7 @@ void VEML6030_start_read_ambient_light_level(){
 
   I2C_TransferReturn_TypeDef transferStatus;
   // receving SW fault if NVIC interrupt for I2C_Transfer is used, until this is fixed I2CSPM useds
-  //transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence); // polling
+  transferStatus = I2CSPM_Transfer(I2C0, &transferSequence);
   if (transferStatus < 0) {
     LOG_ERROR("%d\r\n", transferStatus);
   }

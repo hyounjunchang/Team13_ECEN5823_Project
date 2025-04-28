@@ -33,7 +33,6 @@
 #include "src/log.h"
 
 #if DEVICE_IS_BLE_SERVER
-static VEML6030_state currState_VEML6030 = VEML6030_IDLE;
 static uint16_t VEML6030_timer_count = 0;
 #endif
 
@@ -107,64 +106,20 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
   }
   uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
 
-  bool start_i2c = false;
-  bool read_sensor = false;
-
   // start reading VEML6030 every 5 second
   if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
       if (VEML6030_timer_count == 0){
-          start_i2c = true;
+          VEML6030_start_read_ambient_light_level();
           VEML6030_timer_count++;
       }
       else if(VEML6030_timer_count == 4){
-          read_sensor = true;
+          float amb_light_lux = VEML6030_read_measured_ambient_light();
+          update_amb_light_gatt_and_send_notification(amb_light_lux);
           VEML6030_timer_count = 0;
       }
       else {
           VEML6030_timer_count++;
       }
-  }
-  // return on any non-timer event
-  else{
-      return;
-  }
-  // read/start i2c every 5 sec
-  switch(currState_VEML6030){
-    case VEML6030_IDLE:
-      if (start_i2c){
-          VEML6030_start_read_ambient_light_level();
-          currState_VEML6030 = VEML6030_WAIT_I2C_READ;
-      }
-      break;
-    case VEML6030_WAIT_I2C_READ:
-      if (read_sensor){
-          float amb_light_lux = VEML6030_read_measured_ambient_light();
-          update_amb_light_gatt_and_send_notification(amb_light_lux);
-          currState_VEML6030 = VEML6030_IDLE;
-      }
-      break;
-    default:
-      break;
-  }
-}
-
-void sound_detector_update(sl_bt_msg_t* evt){
-  // only update on external signal (non-bluetooth)
-  if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
-      return;
-  }
-  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
-
-  // start reading ADC every 1 sec
-  if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
-    if (OKtoUpdateGATT()){
-        uint32_t *sound_mv = getSoundLevelptr();
-        update_sound_level_gatt_and_send_notification(*sound_mv);
-        setOKtoUpdateGATT(false);
-    }
-    // Start next ADC conversion
-    ADC_Start(ADC0, adcStartSingle);
-    setOKtoUpdateGATT(false);
   }
 }
 
