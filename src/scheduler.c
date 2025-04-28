@@ -101,16 +101,22 @@ void set_scheduler_event(scheduler_event event){
 
 // Read Ambient Light every 5 sec
 void ambient_light_state_machine(sl_bt_msg_t* evt){
+  // only update on external signal (non-bluetooth)
+  if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+      return;
+  }
+  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+
   bool start_i2c = false;
   bool read_sensor = false;
 
-  // start reading VEML6030 every 5 second, 8 * 5 soft timer (1 timer = 125ms)
-  if (SL_BT_MSG_ID(evt->header) == sl_bt_evt_system_soft_timer_id){
+  // start reading VEML6030 every 5 second
+  if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
       if (VEML6030_timer_count == 0){
           start_i2c = true;
           VEML6030_timer_count++;
       }
-      else if(VEML6030_timer_count == 39){
+      else if(VEML6030_timer_count == 4){
           read_sensor = true;
           VEML6030_timer_count = 0;
       }
@@ -118,12 +124,11 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
           VEML6030_timer_count++;
       }
   }
-  // return on any non soft-timer event
+  // return on any non-timer event
   else{
       return;
   }
-
-  // read/start i2c every 40 soft-timer ticks
+  // read/start i2c every 5 sec
   switch(currState_VEML6030){
     case VEML6030_IDLE:
       if (start_i2c){
@@ -140,6 +145,39 @@ void ambient_light_state_machine(sl_bt_msg_t* evt){
       break;
     default:
       break;
+  }
+}
+
+void sound_detector_update(sl_bt_msg_t* evt){
+  // only update on external signal (non-bluetooth)
+  if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+      return;
+  }
+  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+
+  // start reading ADC every 1 sec
+  if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
+    if (OKtoUpdateGATT()){
+        uint32_t *sound_mv = getSoundLevelptr();
+        update_sound_level_gatt_and_send_notification(*sound_mv);
+        setOKtoUpdateGATT(false);
+    }
+    // Start next ADC conversion
+    ADC_Start(ADC0, adcStartSingle);
+    setOKtoUpdateGATT(false);
+  }
+}
+
+void lcd_display_update(sl_bt_msg_t* evt){
+  // only update on external signal (non-bluetooth)
+  if (SL_BT_MSG_ID(evt->header) != sl_bt_evt_system_external_signal_id){
+      return;
+  }
+  uint32_t ble_event_flags = evt->data.evt_system_external_signal.extsignals;
+
+  // refresh LCD every 1s
+  if (ble_event_flags & BLE_LETIMER0_UF_FLAG){
+      displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
   }
 }
 #endif

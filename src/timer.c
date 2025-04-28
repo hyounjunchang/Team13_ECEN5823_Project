@@ -20,7 +20,7 @@
 // for critical section
 #include <em_core.h>
 
-#define LETIMER_PERIOD_MS 3000
+#define LETIMER_PERIOD_MS 1000
 
 #define LFXO_FREQ 32768
 #define ULFRCO_FREQ 1000

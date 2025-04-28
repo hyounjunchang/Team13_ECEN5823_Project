@@ -320,18 +320,17 @@ void displayInit()
     // Students: Figure out what parameters to pass in to sl_bt_system_set_soft_timer() to
     //           set up a 1 second repeating soft timer and uncomment the following lines
 
-	  sl_status_t          timer_response;
+	  //sl_status_t          timer_response;
 
 	  // using lazy soft timer instead
 	  // 32768 ticks = 1 second, slack = 100 ticks, handle = 0, repeat
-	  // update every 1 second
+    /*
 	  timer_response = sl_bt_system_set_lazy_soft_timer(32768, 100, 0, false);
 	  if (timer_response != SL_STATUS_OK) {
 	      LOG_ERROR("Error setting up Bluetooth Soft Timer, Error code: 0x%x\r\n",
 	                (uint16_t)timer_response);
     }
-
-
+    */
 
 } // displayInit()
 

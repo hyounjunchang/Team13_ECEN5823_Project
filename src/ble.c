@@ -570,24 +570,6 @@ void handle_ble_event(sl_bt_msg_t* evt){
       LOG_ERROR("Received Indication Timeout\r\n");
       break;
     // Bluetooth soft timer interrupt (125 ms)
-    case sl_bt_evt_system_soft_timer_id:
-      // refresh LCD every 8 * 125ms
-      if (lazy_timer_count == 7){
-        displayUpdate(); // prevent charge buildup within the Liquid Crystal Cells
-        // Start next ADC conversion
-        ADC_Start(ADC0, adcStartSingle);
-        setOKtoUpdateGATT(false);
-        lazy_timer_count = 0;
-      }
-      else{
-          if (OKtoUpdateGATT()){
-              update_sound_level_gatt_and_send_notification(sound_level_mv);
-              setOKtoUpdateGATT(false);
-          }
-
-          lazy_timer_count++;
-      }
-      break;
     case sl_bt_evt_sm_confirm_bonding_id:
       // accept bonding request
       sc = sl_bt_sm_bonding_confirm(ble_data.connectionHandle, 1);
