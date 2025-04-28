@@ -49,14 +49,8 @@
 #define VEML6030_POWER_SAVING 0x03
 #define VEML6030_ALS 0x04
 
-static uint8_t curr_i2c_target = I2C_TRANSFER_NONE;
-
 // global variables
 I2C_TransferSeq_TypeDef transferSequence; // global
-
-// for SI7021
-uint8_t cmd_data; // make this global for IRQs in A4
-uint8_t read_data[2]; // make this global for IRQs in A4
 
 // for VEML6030
 uint8_t VEML6030_cmd_data[3];
@@ -84,98 +78,6 @@ void initialize_I2C(){
 
   // Initialize ambient light sensor
   VEML6030_initialize();
-}
-
-void set_I2C_transfer_target(i2c_transfer_target target){
-  curr_i2c_target = target;
-}
-
-void clear_I2C_transfer_target(){
-  curr_i2c_target = I2C_TRANSFER_NONE;
-}
-
-i2c_transfer_target get_I2C_transfer_target(){
-  return curr_i2c_target;
-}
-
-
-// returns temperature in Celsius
-float SI7021_convert_temp(uint16_t temp_code){
-  return (175.72 * temp_code) / 65536 - 46.85;
-}
-
-// Used from Lecture 6 slides
-void SI7021_start_measure_temp(){
-  set_I2C_transfer_target(I2C_TRANSFER_SI7021);
-
-  // Sleep at EM1 during I2C
-  if (LOWEST_ENERGY_MODE == 2){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  if (LOWEST_ENERGY_MODE == 3){
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-
-  // write command to sensor to read temperature data
-  cmd_data = MEASURE_TEMP_NO_HOLD;
-  transferSequence.addr = SI7021_ADDR << 1; // shift device address left
-  transferSequence.flags = I2C_FLAG_WRITE;
-  transferSequence.buf[0].data = &cmd_data; // pointer to data to write
-  transferSequence.buf[0].len = sizeof(cmd_data);
-
-  I2C_TransferReturn_TypeDef transferStatus;
-  transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-  if (transferStatus < 0) {
-    LOG_ERROR("%d\r\n", transferStatus);
-  }
-}
-
-void SI7021_wait_temp_sensor(){
-  timerWaitUs_irq(11000); // wait 11ms for sensor data
-}
-
-void SI7021_start_read_sensor(){
-  set_I2C_transfer_target(I2C_TRANSFER_SI7021);
-
-  // Sleep at EM1 during I2C
-  if (LOWEST_ENERGY_MODE == 2){
-     sl_power_manager_remove_em_requirement(SL_POWER_MANAGER_EM2);
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-  if (LOWEST_ENERGY_MODE == 3){
-     sl_power_manager_add_em_requirement(SL_POWER_MANAGER_EM1);
-  }
-
-  // send Read command
-  transferSequence.addr = SI7021_ADDR << 1; // shift device address left
-  transferSequence.flags = I2C_FLAG_READ;
-  transferSequence.buf[0].data = getReadData_buf(); // pointer to data to write
-  transferSequence.buf[0].len = 2;
-
-  I2C_TransferReturn_TypeDef transferStatus;
-  transferStatus = I2C_TransferInit(I2C0, &transferSequence);
-  if (transferStatus < 0) {
-        LOG_ERROR("%d\r\n", transferStatus);
-  }
-}
-
-int SI7021_read_measured_temp(){
-  // SI7021 sends 2-byte data, MSB then LSB (big-endian)
-  // uint16_t is little-endian, so you can't directly store to uint16_t
-  // add values from 0
-  uint16_t sensor_value = read_data[1];
-  sensor_value += (uint16_t)read_data[0] << 8;
-
-  // convert sensor value to temperature
-  float sensor_temp = SI7021_convert_temp(sensor_value);
-  int rounded_sensor_temp = (int)sensor_temp;
-
-  return rounded_sensor_temp;
-}
-
-uint8_t* getReadData_buf(){
-  return &(read_data[0]);
 }
 
 // Using I2CSPM for initialization
@@ -222,8 +124,6 @@ void VEML6030_initialize(){
 
 // since refresh time = 4100ms, call this every >5 sec
 void VEML6030_start_read_ambient_light_level(){
-  set_I2C_transfer_target(I2C_TRANSFER_VEML6030);
-
   // Set mode
   VEML6030_cmd_data[0] = VEML6030_ALS;
 

@@ -28,14 +28,6 @@ typedef enum{
 } scheduler_event;
 
 #if DEVICE_IS_BLE_SERVER
-// for server
-typedef enum{
-  SI7021_IDLE,
-  SI7021_WAIT_POWER_UP,
-  SI7021_WAIT_I2C_WRITE,
-  SI7021_WAIT_I2C_READ_START,
-  SI7021_WAIT_I2C_READ_COMPLETE
-} SI7021_state;
 
 typedef enum{
   VEML6030_IDLE,
@@ -53,8 +45,7 @@ typedef enum{
 void set_scheduler_event(scheduler_event event);
 
 #if DEVICE_IS_BLE_SERVER // functions only for server
-// for SI7021 state machine
-SI7021_state get_SI7021_state();
+
 // state machines using ble event
 void temperature_state_machine(sl_bt_msg_t* evt);
 void ambient_light_state_machine(sl_bt_msg_t* evt);
